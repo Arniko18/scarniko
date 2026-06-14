@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es" class="theme-dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scarniko · Centro de Reventa Vinted</title>
+<meta name="description" content="Gestiona tu stock de Vinted, descubre qué marcas vuelan y genera anuncios que venden. Panel todo-en-uno para revendedores profesionales.">
+<meta name="theme-color" content="#a84930">
+
+<!-- Open Graph / redes sociales -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scarniko.es/">
+<meta property="og:title" content="Scarniko · Centro de Reventa Vinted">
+<meta property="og:description" content="Gestiona tu stock, descubre qué marcas vuelan y genera anuncios que venden. Panel todo-en-uno para revendedores de Vinted.">
+<meta property="og:image" content="https://scarniko.es/og-image.png">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://scarniko.es/">
+<meta name="twitter:title" content="Scarniko · Centro de Reventa Vinted">
+<meta name="twitter:description" content="Gestiona tu stock, descubre qué marcas vuelan y genera anuncios que venden.">
+<meta name="twitter:image" content="https://scarniko.es/og-image.png">
+
+<!-- Favicon + PWA -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="bg-fx"></div>
+
+<div class="app">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><span>S</span></div>
+      <div>
+        <div class="name"><b>Scarniko</b></div>
+        <div class="tagline">Resell Engine</div>
+      </div>
+    </div>
+
+    <div class="nav-section">Operación</div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Resumen</span>
+      </button>
+      <button class="nav-item" data-view="radar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><path d="M12 12 L20 7"/></svg>
+        <span>Radar de Mercado</span>
+        <span class="badge">LIVE</span>
+      </button>
+      <button class="nav-item" data-view="stock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/><path d="M12 13 v8"/></svg>
+        <span>Inventario</span>
+      </button>
+      <button class="nav-item" data-view="accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20 a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5 a3 3 0 0 1 0 5.5"/><path d="M17.5 14.5 a5.5 5.5 0 0 1 3 5"/></svg>
+        <span>Multicuentas</span>
+      </button>
+    </nav>
+
+    <div class="nav-section">Estrategia</div>
+    <nav class="nav">
+      <button class="nav-item" data-view="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9 h18 M8 2.5 v4 M16 2.5 v4"/></svg>
+        <span>Calendario</span>
+      </button>
+      <button class="nav-item" data-view="optimizer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 h4 L19 9 a2.1 2.1 0 0 0-3-3 L5 17 Z"/><path d="M14 6 l3 3"/></svg>
+        <span>Optimizador</span>
+      </button>
+    </nav>
+
+    <div class="side-bottom">
+      <div class="theme-toggle">
+        <button id="thDark" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5 A8 8 0 1 1 9.5 4 a6.2 6.2 0 0 0 10.5 10.5Z"/></svg><span>Oscuro</span></button>
+        <button id="thLight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg><span>Claro</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+    <div class="topbar">
+      <div class="ticker" id="ticker"></div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="search-input" placeholder="Buscar marca, prenda…" aria-label="Buscar en inventario">
+      </div>
+      <div class="acct-switch">
+        <button class="acct-btn" id="acctBtn" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div class="acct-menu" id="acctMenu"></div>
+      </div>
+    </div>
+
+    <div class="scroll">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="view active" id="dashboard">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow"><span class="pulse-dot"></span>Panel en vivo</div>
+            <div class="pt" id="dashTitle">Panel de Control</div>
+            <div class="ps" id="dashSubtitle">Tu panel de reventa de un vistazo.</div>
+          </div>
+        </div>
+
+        <div class="stat-row" id="dashStats"></div>
+
+        <div class="grid g-3" style="margin-bottom:18px">
+          <div class="card glow span-2">
+            <div class="card-h">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg></div>
+              <div><h2>Recomendaciones inteligentes</h2><div class="sub">Acciones priorizadas para vender más esta semana</div></div>
+            </div>
+            <div id="dashRecos"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5M21 7h-5"/></svg></div><h2>Salud</h2></div>
+            <div id="healthGauge"></div>
+            <div class="note">Combina tu sell-through, ritmo de ventas y prendas paradas. Sube republicando lo estancado.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20 a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5 a3 3 0 0 1 0 5.5"/><path d="M17.5 14.5 a5.5 5.5 0 0 1 3 5"/></svg></div>
+            <div><h2>Tus cuentas</h2><div class="sub">Toca una para gestionarla</div></div>
+          </div>
+          <div class="rank-list" id="dashAccts"></div>
+        </div>
+      </section>
+
+      <!-- ===== RADAR ===== -->
+      <section class="view" id="radar">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow"><span class="pulse-dot"></span>Datos de mercado · jun 2026</div>
+            <div class="pt">Radar de Mercado</div>
+            <div class="ps">Qué marcas vuelan ahora mismo. Cuanto más cerca del centro, más demanda. El color marca la temperatura. Pasa el ratón por un punto.</div>
+          </div>
+        </div>
+
+        <div class="radar-wrap">
+
+          <div class="card glow">
+            <div class="radar-stage">
+              <div class="radar-skeleton" id="radarSkeleton" aria-hidden="true">
+                <div class="rs-ring rs-1"></div>
+                <div class="rs-ring rs-2"></div>
+                <div class="rs-ring rs-3"></div>
+              </div>
+              <div class="radar-center-label">SCARNIKO · DEMAND SCAN</div>
+              <canvas id="radarCanvas" aria-label="Radar de demanda de marcas en Vinted"></canvas>
+            </div>
+            <div class="radar-legend">
+              <span class="lg"><span class="sw" style="background:var(--pink)"></span>Vuela</span>
+              <span class="lg"><span class="sw" style="background:var(--lime)"></span>En subida</span>
+              <span class="lg"><span class="sw" style="background:var(--amber)"></span>Demanda alta</span>
+              <span class="lg"><span class="sw" style="background:var(--faint)"></span>Estable / fría</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 c2 3 5 5 5 9 a5 5 0 0 1-10 0 c0-1.6.7-2.8 1.5-3.8 C9 10 10 8.5 12 3Z"/></svg></div><div><h2>Ranking de marcas</h2><div class="sub">Demanda · variación semanal</div></div></div>
+            <div class="rank-list" id="radarRank"></div>
+          </div>
+        </div>
+
+        <div class="grid g-2" style="margin-top:18px">
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5M21 7h-5"/></svg></div><div><h2>Categorías con más rotación</h2><div class="sub">% de demanda · tendencia</div></div></div>
+            <div id="radarCats"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div><div><h2>Cómo leer el radar</h2></div></div>
+            <div class="reco"><div class="ric reco-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></div><div class="rtxt"><b>Centro = oro.</b> Las marcas cerca del núcleo tienen demanda masiva: se venden rápido y casi solas.</div></div>
+            <div class="reco"><div class="ric reco-lime"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/></svg></div><div class="rtxt"><b>Verde = oportunidad.</b> Marcas en subida (Salomon, New Balance, Stüssy): compra ahora antes de que suban de precio.</div></div>
+            <div class="reco"><div class="ric reco-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 c2 3 5 5 5 9 a5 5 0 0 1-10 0Z"/></svg></div><div class="rtxt"><b>Cada sector</b> es una categoría. Diversifica tu compra entre los wedges más calientes para no depender de una sola moda.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== STOCK ===== -->
+      <section class="view" id="stock">
+        <div class="page-head">
+          <div>
+            <div class="pt">Gestión de Stock</div>
+            <div class="ps">Controla coste, precio, margen y estado de cada prenda. Las que llevan +21 días sin venderse se marcan como paradas.</div>
+          </div>
+        </div>
+
+        <div class="grid g-2" style="grid-template-columns: 1fr 1.6fr; align-items:start">
+          <div class="card glow">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div><h2>Añadir prenda</h2><div class="sub" id="invFormNote"></div></div>
+              <button class="btn-icon-toggle right" id="formToggle" aria-expanded="true" aria-controls="itemForm" title="Mostrar/ocultar formulario">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path id="formToggleIcon" d="M18 15l-6-6-6 6"/></svg>
+              </button>
+            </div>
+            <form id="itemForm" class="form-grid">
+              <div class="fld" style="grid-column:1/-1"><label>Prenda</label><input id="f-name" placeholder="Sudadera Carhartt WIP" required></div>
+              <div class="fld"><label>Marca</label><input id="f-brand" placeholder="Carhartt" list="brands"></div>
+              <div class="fld"><label>Categoría</label>
+                <select id="f-cat"><option>Ropa mujer</option><option>Ropa hombre</option><option>Zapatillas</option><option>Bolsos/Accesorios</option><option>Ropa infantil</option><option>Streetwear</option><option>Vintage/Y2K</option><option>Otro</option></select>
+              </div>
+              <div class="fld"><label>Coste (€)</label><input id="f-cost" type="number" step="0.01" placeholder="18.00"></div>
+              <div class="fld"><label>Precio venta (€)</label><input id="f-price" type="number" step="0.01" placeholder="64.95" required></div>
+              <button class="btn btn-primary btn-full" id="invAddBtn" type="submit" style="grid-column:1/-1">Añadir al inventario</button>
+            </form>
+            <datalist id="brands"></datalist>
+          </div>
+
+          <div class="card">
+            <div class="card-h">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg></div>
+              <div><h2>Inventario</h2><div class="sub">Margen y estado en tiempo real</div></div>
+            </div>
+            <div class="table-wrap">
+              <table id="stockTable">
+                <thead><tr><th>Prenda</th><th>Marca</th><th id="invAcctHead" class="hide-mob">Cuenta</th><th>Coste</th><th>Precio</th><th>Margen</th><th>Estado</th><th></th></tr></thead>
+                <tbody id="stockBody"></tbody>
+              </table>
+            </div>
+            <div class="empty" id="stockEmpty" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg>
+              <div>Aún no hay prendas en esta cuenta. ¡Añade la primera arriba!</div>
+            </div>
+            <div style="text-align:right;margin-top:10px">
+              <button id="resetBtn" class="reset-link">Restaurar datos de demo</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ACCOUNTS ===== -->
+      <section class="view" id="accounts">
+        <div class="page-head">
+          <div>
+            <div class="pt">Centro de Cuentas</div>
+            <div class="ps">Gestiona todos tus perfiles desde un sitio. Cambia entre ellos con un clic: el resto del panel se filtra al instante.</div>
+          </div>
+        </div>
+        <div class="stat-row" id="acctAgg"></div>
+        <div class="acct-grid" id="acctCards"></div>
+        <p class="note" style="margin-top:18px">Nota: Scarniko es tu centro de mando para organizar y comparar cuentas; no publica ni opera en Vinted por ti. Cada cuenta debe seguir las normas de la plataforma.</p>
+      </section>
+
+      <!-- ===== CALENDAR ===== -->
+      <section class="view" id="calendar">
+        <div class="page-head">
+          <div>
+            <div class="pt">Calendario de Publicación</div>
+            <div class="ps">Vinted reordena por fecha de actualización: publicar y republicar en hora punta multiplica tus visitas. Aquí está el mapa de calor de la demanda.</div>
+          </div>
+        </div>
+
+        <div class="card glow" style="margin-bottom:18px">
+          <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div><div><h2>Mapa de calor semanal</h2><div class="sub">Día × hora · cuanto más brillante, más compradores conectados</div></div></div>
+          <div class="heat-wrap"><div class="heat-grid" id="heatGrid"></div></div>
+          <div class="heat-scale">Menos demanda
+            <span class="ramp">
+              <i style="background:color-mix(in oklab, var(--primary) 8%, var(--surface-2))"></i>
+              <i style="background:color-mix(in oklab, var(--primary) 30%, var(--surface-2))"></i>
+              <i style="background:color-mix(in oklab, var(--primary) 52%, var(--surface-2))"></i>
+              <i style="background:color-mix(in oklab, var(--primary) 74%, var(--surface-2))"></i>
+              <i style="background:color-mix(in oklab, var(--primary) 92%, var(--surface-2))"></i>
+            </span>Más demanda</div>
+        </div>
+
+        <div class="grid g-2">
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div><div><h2>Mejores franjas para publicar</h2></div></div>
+            <div class="slot-list" id="slotList"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9 h18 M8 2.5 v4 M16 2.5 v4"/></svg></div><div><h2>Qué vender por temporada</h2></div></div>
+            <div class="season-grid" id="seasonGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== OPTIMIZER ===== -->
+      <section class="view" id="optimizer">
+        <div class="page-head">
+          <div>
+            <div class="pt">Optimizador de Anuncios</div>
+            <div class="ps">Genera títulos cargados de palabras clave y descripciones que venden. Rellena los datos y copia.</div>
+          </div>
+        </div>
+
+        <div class="grid g-2" style="grid-template-columns: 1.1fr 0.9fr; align-items:start">
+          <div class="card glow">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 h4 L19 9 a2.1 2.1 0 0 0-3-3 L5 17 Z"/><path d="M14 6 l3 3"/></svg></div><div><h2>Generador de anuncios</h2></div></div>
+            <form id="optForm" class="form-grid">
+              <div class="fld"><label>Marca</label><input id="o-brand" placeholder="Levi's" list="brands"></div>
+              <div class="fld"><label>Tipo de prenda</label><input id="o-type" placeholder="Vaqueros 501"></div>
+              <div class="fld"><label>Color</label><input id="o-color" placeholder="Azul"></div>
+              <div class="fld"><label>Talla</label><input id="o-size" placeholder="W32 / M"></div>
+              <div class="fld"><label>Estado</label><select id="o-cond"><option>Nuevo con etiqueta</option><option>Nuevo sin etiqueta</option><option>Muy bueno</option><option>Bueno</option><option>Satisfactorio</option></select></div>
+              <div class="fld"><label>Estilo / ocasión</label><input id="o-style" placeholder="vintage, casual"></div>
+              <button class="btn btn-primary btn-full" type="submit" style="grid-column:1/-1">Generar anuncio optimizado</button>
+            </form>
+            <div class="opt-result" id="optResult"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 6a7 7 0 1 0 0 12M4 10h9M4 14h9"/></svg></div><div><h2>Trucos de precio</h2><div class="sub">Para cerrar más rápido y con más margen</div></div></div>
+            <div id="priceTips"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="22" fill="#1c140f"/>
+    <circle cx="50" cy="50" r="26" fill="none" stroke="#a84930" stroke-width="2" opacity="0.5"/>
+    <circle cx="50" cy="50" r="15" fill="none" stroke="#a84930" stroke-width="2" opacity="0.7"/>
+    <line x1="50" y1="50" x2="72" y2="36" stroke="#a84930" stroke-width="2"/>
+    <circle cx="62" cy="42" r="3.5" fill="#c04040"/>
+    <circle cx="40" cy="58" r="3" fill="#7ab65a"/>
+    <circle cx="50" cy="50" r="3" fill="#a84930"/>
+  </svg>
+</template>
+
+<script src="data.js"></script>
+<script src="viz.js"></script>
+<script src="app.js"></script>
+<!-- impeccable-live-start -->
+<script src="http://localhost:8400/live.js"></script>
+<!-- impeccable-live-end -->
+</body>
+</html>

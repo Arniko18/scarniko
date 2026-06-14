@@ -1,0 +1,20 @@
+{
+  "name": "Scarniko",
+  "short_name": "Scarniko",
+  "description": "Centro de Reventa Vinted — gestión de stock, radar de mercado y optimizador de anuncios",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#16201f",
+  "theme_color": "#3ad6c8",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["business", "finance", "productivity"]
+}
