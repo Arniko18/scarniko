@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    SCARNIKO · APP
    ============================================================ */
 
@@ -336,34 +336,34 @@ function renderRadarSide() {
    INVENTORY — KANBAN PIPELINE
    ============================================================ */
 function renderInventory() {
-  const single = DB.activeId !== “all”;
+  const single = DB.activeId !== "all";
   const targetName = single ? DB.accounts.find(a => a.id === DB.activeId)?.name : null;
 
-  $(“#invFormNote”).textContent = single
-    ? `Se añadirá a “${targetName}”.`
-    : “Selecciona una cuenta concreta para añadir prendas.”;
-  $(“#invAddBtn”).disabled = !single;
-  $(“#invAddBtn”).style.opacity = single ? “1” : “0.45”;
+  $("#invFormNote").textContent = single
+    ? `Se añadirá a "${targetName}".`
+    : "Selecciona una cuenta concreta para añadir prendas.";
+  $("#invAddBtn").disabled = !single;
+  $("#invAddBtn").style.opacity = single ? "1" : "0.45";
 
   const items = scopeItems().sort((a, b) => b.added - a.added);
 
   // Auto-collapse the add form when items already exist
-  const formEl = $(“#itemForm”);
-  const formToggle = $(“#formToggle”);
-  const formIcon = document.getElementById(“formToggleIcon”);
+  const formEl = $("#itemForm");
+  const formToggle = $("#formToggle");
+  const formIcon = document.getElementById("formToggleIcon");
   const shouldCollapse = single && items.length > 0;
-  if (formEl) formEl.style.display = shouldCollapse ? “none” : “”;
-  if (formToggle) formToggle.setAttribute(“aria-expanded”, shouldCollapse ? “false” : “true”);
-  if (formIcon) formIcon.setAttribute(“d”, shouldCollapse ? “M6 9l6 6 6-6” : “M18 15l-6-6-6 6”);
+  if (formEl) formEl.style.display = shouldCollapse ? "none" : "";
+  if (formToggle) formToggle.setAttribute("aria-expanded", shouldCollapse ? "false" : "true");
+  if (formIcon) formIcon.setAttribute("d", shouldCollapse ? "M6 9l6 6 6-6" : "M18 15l-6-6-6 6");
 
-  const kanban = $(“#kanban”);
-  const empty = $(“#stockEmpty”);
-  if (!items.length) { empty.style.display = “block”; kanban.style.display = “none”; return; }
-  empty.style.display = “none”; kanban.style.display = “”;
+  const kanban = $("#kanban");
+  const empty = $("#stockEmpty");
+  if (!items.length) { empty.style.display = "block"; kanban.style.display = "none"; return; }
+  empty.style.display = "none"; kanban.style.display = "";
 
   const COLS = [
     { stage: 'house',  label: 'En casa',   dotCls: 'kb-dot-house',  emptyMsg: 'Sin prendas en casa.<br>Aquí van las que aún no has listado.' },
-    { stage: 'listed', label: 'En Vinted', dotCls: 'kb-dot-listed', emptyMsg: 'Nada listado ahora.<br>Mueve prendas desde “En casa”.' },
+    { stage: 'listed', label: 'En Vinted', dotCls: 'kb-dot-listed', emptyMsg: 'Nada listado ahora.<br>Mueve prendas desde "En casa".' },
     { stage: 'sold',   label: 'Vendido',   dotCls: 'kb-dot-sold',   emptyMsg: '¡Sin ventas aún!<br>Mueve prendas listadas cuando se vendan.' }
   ];
 
@@ -371,12 +371,12 @@ function renderInventory() {
   items.forEach(it => { if (grouped[it.stage]) grouped[it.stage].push(it); else grouped.listed.push(it); });
 
   function cardActions(it) {
-    const del = `<button class=”kb-btn icon-only danger” aria-label=”Eliminar” data-del=”${it.id}” data-acc=”${it._acc.id}”>${I.trash}</button>`;
+    const del = `<button class="kb-btn icon-only danger" aria-label="Eliminar" data-del="${it.id}" data-acc="${it._acc.id}">${I.trash}</button>`;
     if (it.stage === 'house') {
-      return `<button class=”kb-btn primary” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”listed”>${I.bolt} Listar en Vinted</button>${del}`;
+      return `<button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="listed">${I.bolt} Listar en Vinted</button>${del}`;
     }
     if (it.stage === 'listed') {
-      return `<button class=”kb-btn” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”house”>${I.box} A casa</button><button class=”kb-btn primary” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”sold”>${I.coin} Vendida</button>${del}`;
+      return `<button class="kb-btn" data-move="${it.id}" data-acc="${it._acc.id}" data-to="house">${I.box} A casa</button><button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="sold">${I.coin} Vendida</button>${del}`;
     }
     return del;
   }
@@ -384,48 +384,48 @@ function renderInventory() {
   function renderCard(it) {
     const margin = it.price - it.cost;
     const staleTag = it.stage === 'listed' && daysSince(it.added) >= STALE
-      ? `<span class=”kb-stale”>${daysSince(it.added)}d parada</span>` : '';
+      ? `<span class="kb-stale">${daysSince(it.added)}d parada</span>` : '';
     const soldInfo = it.stage === 'sold' && it.soldDate
-      ? `<span class=”kb-sold-date”>· hace ${daysSince(it.soldDate)}d</span>` : '';
+      ? `<span class="kb-sold-date">· hace ${daysSince(it.soldDate)}d</span>` : '';
     const accBadge = DB.activeId === 'all'
-      ? `<div class=”avatar av-${it._acc.color}” style=”width:16px;height:16px;border-radius:4px;font-size:8px;flex-shrink:0”>${initials(it._acc.name)}</div>` : '';
-    return `<div class=”kb-card”>
-      <div class=”kb-card-top”>
-        <div class=”kb-thumb”>${I.bag}</div>
-        <div class=”kb-info”>
-          <div class=”kb-name” title=”${esc(it.name)}”>${esc(it.name)}</div>
-          <div class=”kb-meta”>${accBadge}<span>${esc(it.brand)}</span><span>·</span><span>${esc(it.cat)}</span>${soldInfo}</div>
+      ? `<div class="avatar av-${it._acc.color}" style="width:16px;height:16px;border-radius:4px;font-size:8px;flex-shrink:0">${initials(it._acc.name)}</div>` : '';
+    return `<div class="kb-card">
+      <div class="kb-card-top">
+        <div class="kb-thumb">${I.bag}</div>
+        <div class="kb-info">
+          <div class="kb-name" title="${esc(it.name)}">${esc(it.name)}</div>
+          <div class="kb-meta">${accBadge}<span>${esc(it.brand)}</span><span>·</span><span>${esc(it.cat)}</span>${soldInfo}</div>
         </div>
       </div>
       ${staleTag}
-      <div class=”kb-nums”>
-        <span class=”kb-cost”>${eur(it.cost, 2)}</span>
-        <span class=”kb-arrow”>→</span>
-        <span class=”kb-price”>${eur(it.price, 2)}</span>
-        <span class=”kb-margin ${margin >= 0 ? 'up' : 'down'}”><b>${margin >= 0 ? '+' : ''}${eur(margin, 2)}</b></span>
+      <div class="kb-nums">
+        <span class="kb-cost">${eur(it.cost, 2)}</span>
+        <span class="kb-arrow">→</span>
+        <span class="kb-price">${eur(it.price, 2)}</span>
+        <span class="kb-margin ${margin >= 0 ? 'up' : 'down'}"><b>${margin >= 0 ? '+' : ''}${eur(margin, 2)}</b></span>
       </div>
-      <div class=”kb-actions”>${cardActions(it)}</div>
+      <div class="kb-actions">${cardActions(it)}</div>
     </div>`;
   }
 
   kanban.innerHTML = COLS.map(col => {
     const its = grouped[col.stage];
     const val = its.reduce((s, it) => s + it.price, 0);
-    return `<div class=”kb-col”>
-      <div class=”kb-head”>
-        <span class=”kb-dot ${col.dotCls}”></span>
-        <span class=”kb-label-text”>${col.label}</span>
-        <span class=”kb-count”>${its.length}</span>
-        ${val > 0 ? `<span class=”kb-val”>${eur(val, 0)}</span>` : ''}
+    return `<div class="kb-col">
+      <div class="kb-head">
+        <span class="kb-dot ${col.dotCls}"></span>
+        <span class="kb-label-text">${col.label}</span>
+        <span class="kb-count">${its.length}</span>
+        ${val > 0 ? `<span class="kb-val">${eur(val, 0)}</span>` : ''}
       </div>
-      <div class=”kb-items”>
-        ${its.length ? its.map(renderCard).join('') : `<div class=”kb-empty”>${col.emptyMsg}</div>`}
+      <div class="kb-items">
+        ${its.length ? its.map(renderCard).join('') : `<div class="kb-empty">${col.emptyMsg}</div>`}
       </div>
     </div>`;
   }).join('');
 
-  $$(“#kanban [data-move]”).forEach(b => b.onclick = () => moveStage(b.dataset.acc, b.dataset.move, b.dataset.to));
-  $$(“#kanban [data-del]”).forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
+  $$("#kanban [data-move]").forEach(b => b.onclick = () => moveStage(b.dataset.acc, b.dataset.move, b.dataset.to));
+  $$("#kanban [data-del]").forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
 }
 
 function addItem(e) {
