@@ -139,14 +139,16 @@ const SEED_ACCOUNTS = [
     reviews: 312,
     followers: 1840,
     items: [
-      { name: "Sudadera Carhartt WIP", brand: "Carhartt", cat: "Streetwear", cost: 18, price: 64.95, added: ago(2),  sold: false, soldDate: null },
-      { name: "Nike Dunk Low Panda",   brand: "Nike",     cat: "Zapatillas", cost: 45, price: 99.0,  added: ago(5),  sold: false, soldDate: null },
-      { name: "Vaqueros Levi's 501",   brand: "Levi's",   cat: "Vintage/Y2K",cost: 8,  price: 34.95, added: ago(26), sold: false, soldDate: null },
-      { name: "Polo Ralph Lauren",     brand: "Ralph Lauren", cat: "Ropa hombre", cost: 6, price: 27.5, added: ago(11), sold: false, soldDate: null },
-      { name: "Bolso Bimba y Lola",    brand: "Bimba y Lola", cat: "Bolsos/Accesorios", cost: 25, price: 79.0, added: ago(40), sold: false, soldDate: null },
-      { name: "Adidas Samba OG",       brand: "Adidas",   cat: "Zapatillas", cost: 35, price: 84.95, added: ago(9),  sold: true,  soldDate: ago(3) },
-      { name: "Cazadora vaquera Zara", brand: "Zara",     cat: "Ropa mujer", cost: 5,  price: 24.95, added: ago(20), sold: true,  soldDate: ago(8) },
-      { name: "Sudadera Nike vintage", brand: "Nike",     cat: "Vintage/Y2K",cost: 7,  price: 39.95, added: ago(33), sold: true,  soldDate: ago(14) }
+      { name: "Nike Air Force 1 Low",   brand: "Nike",     cat: "Zapatillas", cost: 42, price: 89.0,  added: ago(1),  stage: "house",  sold: false, soldDate: null },
+      { name: "Camiseta Tommy Hilfiger",brand: "Tommy Hilfiger", cat: "Vintage/Y2K", cost: 6, price: 29.95, added: ago(2), stage: "house", sold: false, soldDate: null },
+      { name: "Sudadera Carhartt WIP",  brand: "Carhartt", cat: "Streetwear", cost: 18, price: 64.95, added: ago(5),  stage: "listed", sold: false, soldDate: null },
+      { name: "Nike Dunk Low Panda",    brand: "Nike",     cat: "Zapatillas", cost: 45, price: 99.0,  added: ago(8),  stage: "listed", sold: false, soldDate: null },
+      { name: "Vaqueros Levi's 501",    brand: "Levi's",   cat: "Vintage/Y2K",cost: 8,  price: 34.95, added: ago(26), stage: "listed", sold: false, soldDate: null },
+      { name: "Polo Ralph Lauren",      brand: "Ralph Lauren", cat: "Ropa hombre", cost: 6, price: 27.5, added: ago(11), stage: "listed", sold: false, soldDate: null },
+      { name: "Bolso Bimba y Lola",     brand: "Bimba y Lola", cat: "Bolsos/Accesorios", cost: 25, price: 79.0, added: ago(40), stage: "listed", sold: false, soldDate: null },
+      { name: "Adidas Samba OG",        brand: "Adidas",   cat: "Zapatillas", cost: 35, price: 84.95, added: ago(9),  stage: "sold",   sold: true,  soldDate: ago(3) },
+      { name: "Cazadora vaquera Zara",  brand: "Zara",     cat: "Ropa mujer", cost: 5,  price: 24.95, added: ago(20), stage: "sold",   sold: true,  soldDate: ago(8) },
+      { name: "Sudadera Nike vintage",  brand: "Nike",     cat: "Vintage/Y2K",cost: 7,  price: 39.95, added: ago(33), stage: "sold",   sold: true,  soldDate: ago(14) }
     ]
   },
   {
@@ -159,13 +161,14 @@ const SEED_ACCOUNTS = [
     reviews: 196,
     followers: 2630,
     items: [
-      { name: "New Balance 530",       brand: "New Balance", cat: "Zapatillas", cost: 55, price: 109.0, added: ago(1),  sold: false, soldDate: null },
-      { name: "Salomon XT-6",          brand: "Salomon",  cat: "Zapatillas", cost: 70, price: 149.0, added: ago(3),  sold: false, soldDate: null },
-      { name: "Jordan 1 Mid",          brand: "Jordan",   cat: "Zapatillas", cost: 80, price: 159.0, added: ago(7),  sold: false, soldDate: null },
-      { name: "Vans Old Skool",        brand: "Vans",     cat: "Zapatillas", cost: 20, price: 39.95, added: ago(28), sold: false, soldDate: null },
-      { name: "Nike Air Max 90",       brand: "Nike",     cat: "Zapatillas", cost: 50, price: 95.0,  added: ago(12), sold: true,  soldDate: ago(4) },
-      { name: "Adidas Gazelle Bold",   brand: "Adidas",   cat: "Zapatillas", cost: 38, price: 79.95, added: ago(18), sold: true,  soldDate: ago(6) },
-      { name: "New Balance 1906R",     brand: "New Balance", cat: "Zapatillas", cost: 90, price: 175.0, added: ago(22), sold: true, soldDate: ago(9) }
+      { name: "Asics Gel-Kayano 14",    brand: "Asics",    cat: "Zapatillas", cost: 60, price: 125.0, added: ago(0),  stage: "house",  sold: false, soldDate: null },
+      { name: "New Balance 530",        brand: "New Balance", cat: "Zapatillas", cost: 55, price: 109.0, added: ago(2), stage: "listed", sold: false, soldDate: null },
+      { name: "Salomon XT-6",           brand: "Salomon",  cat: "Zapatillas", cost: 70, price: 149.0, added: ago(4),  stage: "listed", sold: false, soldDate: null },
+      { name: "Jordan 1 Mid",           brand: "Jordan",   cat: "Zapatillas", cost: 80, price: 159.0, added: ago(7),  stage: "listed", sold: false, soldDate: null },
+      { name: "Vans Old Skool",         brand: "Vans",     cat: "Zapatillas", cost: 20, price: 39.95, added: ago(28), stage: "listed", sold: false, soldDate: null },
+      { name: "Nike Air Max 90",        brand: "Nike",     cat: "Zapatillas", cost: 50, price: 95.0,  added: ago(12), stage: "sold",   sold: true,  soldDate: ago(4) },
+      { name: "Adidas Gazelle Bold",    brand: "Adidas",   cat: "Zapatillas", cost: 38, price: 79.95, added: ago(18), stage: "sold",   sold: true,  soldDate: ago(6) },
+      { name: "New Balance 1906R",      brand: "New Balance", cat: "Zapatillas", cost: 90, price: 175.0, added: ago(22), stage: "sold", sold: true, soldDate: ago(9) }
     ]
   },
   {
@@ -178,12 +181,13 @@ const SEED_ACCOUNTS = [
     reviews: 84,
     followers: 910,
     items: [
-      { name: "Chaqueta Polo Sport 90s", brand: "Polo Sport", cat: "Vintage/Y2K", cost: 12, price: 69.0, added: ago(4),  sold: false, soldDate: null },
-      { name: "Sudadera Stüssy logo",    brand: "Stüssy",   cat: "Streetwear", cost: 15, price: 54.95, added: ago(6),  sold: false, soldDate: null },
-      { name: "Camiseta Harley vintage", brand: "Otro",     cat: "Vintage/Y2K", cost: 4,  price: 44.95, added: ago(30), sold: false, soldDate: null },
-      { name: "Plumífero North Face",    brand: "The North Face", cat: "Streetwear", cost: 40, price: 119.0, added: ago(15), sold: false, soldDate: null },
-      { name: "Vaqueros Levi's 90s",     brand: "Levi's",   cat: "Vintage/Y2K", cost: 6, price: 39.95, added: ago(45), sold: false, soldDate: null },
-      { name: "Polo Ralph vintage",      brand: "Ralph Lauren", cat: "Vintage/Y2K", cost: 5, price: 32.0, added: ago(19), sold: true, soldDate: ago(5) }
+      { name: "Chaqueta jeans Levi's",  brand: "Levi's",   cat: "Vintage/Y2K", cost: 10, price: 54.95, added: ago(3),  stage: "house",  sold: false, soldDate: null },
+      { name: "Chaqueta Polo Sport 90s",brand: "Polo Sport", cat: "Vintage/Y2K", cost: 12, price: 69.0, added: ago(5), stage: "listed", sold: false, soldDate: null },
+      { name: "Sudadera Stüssy logo",   brand: "Stüssy",   cat: "Streetwear", cost: 15, price: 54.95, added: ago(7),  stage: "listed", sold: false, soldDate: null },
+      { name: "Camiseta Harley vintage",brand: "Otro",     cat: "Vintage/Y2K", cost: 4,  price: 44.95, added: ago(30), stage: "listed", sold: false, soldDate: null },
+      { name: "Plumífero North Face",   brand: "The North Face", cat: "Streetwear", cost: 40, price: 119.0, added: ago(15), stage: "listed", sold: false, soldDate: null },
+      { name: "Vaqueros Levi's 90s",    brand: "Levi's",   cat: "Vintage/Y2K", cost: 6, price: 39.95, added: ago(45), stage: "listed", sold: false, soldDate: null },
+      { name: "Polo Ralph vintage",     brand: "Ralph Lauren", cat: "Vintage/Y2K", cost: 5, price: 32.0, added: ago(19), stage: "sold",  sold: true, soldDate: ago(5) }
     ]
   }
 ];

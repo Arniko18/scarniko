@@ -222,50 +222,54 @@
       <section class="view" id="stock">
         <div class="page-head">
           <div>
-            <div class="pt">Gestión de Stock</div>
-            <div class="ps">Controla coste, precio, margen y estado de cada prenda. Las que llevan +21 días sin venderse se marcan como paradas.</div>
+            <div class="pt">Pipeline de Stock</div>
+            <div class="ps">De la compra a la venta en tres etapas. Mueve cada prenda al siguiente estado con un clic.</div>
           </div>
         </div>
 
-        <div class="grid g-2" style="grid-template-columns: 1fr 1.6fr; align-items:start">
-          <div class="card glow">
-            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div><h2>Añadir prenda</h2><div class="sub" id="invFormNote"></div></div>
-              <button class="btn-icon-toggle right" id="formToggle" aria-expanded="true" aria-controls="itemForm" title="Mostrar/ocultar formulario">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path id="formToggleIcon" d="M18 15l-6-6-6 6"/></svg>
-              </button>
+        <div class="card glow" style="margin-bottom:18px">
+          <div class="card-h" id="addFormHead" style="cursor:pointer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div><h2>Añadir prenda</h2><div class="sub" id="invFormNote"></div></div>
+            <button class="btn-icon-toggle right" id="formToggle" aria-expanded="true" aria-controls="itemForm" title="Mostrar/ocultar formulario">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path id="formToggleIcon" d="M18 15l-6-6-6 6"/></svg>
+            </button>
+          </div>
+          <form id="itemForm" class="form-grid">
+            <div class="fld" style="grid-column:1/-1"><label>Prenda</label><input id="f-name" placeholder="Sudadera Carhartt WIP" required></div>
+            <div class="fld"><label>Marca</label><input id="f-brand" placeholder="Carhartt" list="brands"></div>
+            <div class="fld"><label>Categoría</label>
+              <select id="f-cat"><option>Ropa mujer</option><option>Ropa hombre</option><option>Zapatillas</option><option>Bolsos/Accesorios</option><option>Ropa infantil</option><option>Streetwear</option><option>Vintage/Y2K</option><option>Otro</option></select>
             </div>
-            <form id="itemForm" class="form-grid">
-              <div class="fld" style="grid-column:1/-1"><label>Prenda</label><input id="f-name" placeholder="Sudadera Carhartt WIP" required></div>
-              <div class="fld"><label>Marca</label><input id="f-brand" placeholder="Carhartt" list="brands"></div>
-              <div class="fld"><label>Categoría</label>
-                <select id="f-cat"><option>Ropa mujer</option><option>Ropa hombre</option><option>Zapatillas</option><option>Bolsos/Accesorios</option><option>Ropa infantil</option><option>Streetwear</option><option>Vintage/Y2K</option><option>Otro</option></select>
+            <div class="fld"><label>Coste (€)</label><input id="f-cost" type="number" step="0.01" placeholder="18.00"></div>
+            <div class="fld"><label>Precio objetivo (€)</label><input id="f-price" type="number" step="0.01" placeholder="64.95" required></div>
+            <div class="fld" style="grid-column:1/-1">
+              <label>¿Dónde está ahora?</label>
+              <div class="stage-toggle" id="stageToggle">
+                <button type="button" class="stage-opt on" data-stage="house">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M3 12l9-9 9 9M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/></svg>
+                  En casa
+                </button>
+                <button type="button" class="stage-opt" data-stage="listed">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg>
+                  Ya en Vinted
+                </button>
               </div>
-              <div class="fld"><label>Coste (€)</label><input id="f-cost" type="number" step="0.01" placeholder="18.00"></div>
-              <div class="fld"><label>Precio venta (€)</label><input id="f-price" type="number" step="0.01" placeholder="64.95" required></div>
-              <button class="btn btn-primary btn-full" id="invAddBtn" type="submit" style="grid-column:1/-1">Añadir al inventario</button>
-            </form>
-            <datalist id="brands"></datalist>
-          </div>
+            </div>
+            <button class="btn btn-primary btn-full" id="invAddBtn" type="submit" style="grid-column:1/-1">Añadir al pipeline</button>
+          </form>
+          <datalist id="brands"></datalist>
+        </div>
 
-          <div class="card">
-            <div class="card-h">
-              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg></div>
-              <div><h2>Inventario</h2><div class="sub">Margen y estado en tiempo real</div></div>
-            </div>
-            <div class="table-wrap">
-              <table id="stockTable">
-                <thead><tr><th>Prenda</th><th>Marca</th><th id="invAcctHead" class="hide-mob">Cuenta</th><th>Coste</th><th>Precio</th><th>Margen</th><th>Estado</th><th></th></tr></thead>
-                <tbody id="stockBody"></tbody>
-              </table>
-            </div>
-            <div class="empty" id="stockEmpty" style="display:none">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg>
-              <div>Aún no hay prendas en esta cuenta. ¡Añade la primera arriba!</div>
-            </div>
-            <div style="text-align:right;margin-top:10px">
-              <button id="resetBtn" class="reset-link">Restaurar datos de demo</button>
-            </div>
-          </div>
+        <div class="empty" id="stockEmpty" style="display:none;margin-bottom:14px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8 L12 3 L3 8 v8 l9 5 9-5 Z"/><path d="M3 8 l9 5 9-5"/></svg>
+          <div>Aún no hay prendas. ¡Añade la primera arriba!</div>
+        </div>
+
+        <div class="kanban" id="kanban"></div>
+
+        <div style="text-align:right;margin-top:10px">
+          <button id="resetBtn" class="reset-link">Restaurar datos de demo</button>
         </div>
       </section>
 

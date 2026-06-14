@@ -45,6 +45,15 @@ async function load() {
     const { data } = await supa.from("user_data").select("data").eq("user_id", _user.id).maybeSingle();
     if (data && data.data) DB = Object.assign(DB, data.data);
   } catch (e) {}
+  // Migrate items that predate the stage field
+  if (DB.accounts) {
+    DB.accounts.forEach(a => {
+      a.items = (a.items || []).map(it => {
+        if (!it.stage) it.stage = it.sold ? 'sold' : 'listed';
+        return it;
+      });
+    });
+  }
   if (!DB.seeded || !DB.accounts || !DB.accounts.length) {
     DB.accounts = JSON.parse(JSON.stringify(SEED_ACCOUNTS)).map(a => {
       a.items = a.items.map(it => ({ id: rid(), ...it }));
@@ -120,7 +129,11 @@ function setupLoginForm() {
 /* ---------- HELPERS ---------- */
 const STALE = 21;
 const daysSince = ts => Math.floor((Date.now() - ts) / 86400000);
-function status(it) { return it.sold ? "sold" : daysSince(it.added) >= STALE ? "stale" : "stock"; }
+function status(it) {
+  if (it.stage === 'sold') return 'sold';
+  if (it.stage === 'house') return 'house';
+  return daysSince(it.added) >= STALE ? 'stale' : 'stock';
+}
 function fmt(n, d = 0) { return n.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function eur(n, d = 0) { return fmt(n, d) + " €"; }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -158,7 +171,7 @@ function renderAcctSwitcher() {
     ${I.chev.replace("<svg", '<svg class="chev"')}`;
 
   const opt = (a) => {
-    const live = a.items.filter(x => !x.sold).length;
+    const live = a.items.filter(x => x.stage !== 'sold').length;
     return `<div class="acct-opt ${DB.activeId === a.id ? "active" : ""}" data-acc="${a.id}">
       <div class="avatar av-${a.color}">${initials(a.name)}</div>
       <div class="meta"><b>${esc(a.name)}</b><span>${esc(a.handle)}</span></div>
@@ -194,8 +207,8 @@ function switchAccount(id) {
    ============================================================ */
 function renderDashboard() {
   const items = scopeItems();
-  const inStock = items.filter(x => !x.sold);
-  const sold = items.filter(x => x.sold);
+  const inStock = items.filter(x => x.stage !== 'sold');
+  const sold = items.filter(x => x.stage === 'sold');
   const invested = items.reduce((s, x) => s + x.cost, 0);
   const stockValue = inStock.reduce((s, x) => s + x.price, 0);
   const profit = sold.reduce((s, x) => s + (x.price - x.cost), 0);
@@ -212,8 +225,10 @@ function renderDashboard() {
       : (DB.accounts.find(a => a.id === DB.activeId)?.name || "Panel de Control");
   }
   if (subtitleEl) {
+    const listed = items.filter(x => x.stage === 'listed');
+    const house = items.filter(x => x.stage === 'house');
     const staleNote = stale > 0 ? ` · ${stale} parada${stale !== 1 ? "s" : ""}` : "";
-    subtitleEl.textContent = `${inStock.length} en venta · ${sold.length} vendidas${staleNote}`;
+    subtitleEl.textContent = `${listed.length} en Vinted · ${house.length} en casa · ${sold.length} vendidas${staleNote}`;
   }
 
   const tiles = [
@@ -318,77 +333,107 @@ function renderRadarSide() {
 }
 
 /* ============================================================
-   INVENTORY
+   INVENTORY — KANBAN PIPELINE
    ============================================================ */
 function renderInventory() {
-  const single = DB.activeId !== "all";
-  const targetName = single ? DB.accounts.find(a => a.id === DB.activeId).name : null;
-  $("#invFormNote").textContent = single
+  const single = DB.activeId !== “all”;
+  const targetName = single ? DB.accounts.find(a => a.id === DB.activeId)?.name : null;
+
+  $(“#invFormNote”).textContent = single
     ? `Se añadirá a “${targetName}”.`
-    : "Selecciona una cuenta concreta (arriba a la derecha) para añadir prendas.";
-  $("#invAddBtn").disabled = !single;
-  $("#invAddBtn").style.opacity = single ? "1" : "0.45";
+    : “Selecciona una cuenta concreta para añadir prendas.”;
+  $(“#invAddBtn”).disabled = !single;
+  $(“#invAddBtn”).style.opacity = single ? “1” : “0.45”;
 
   const items = scopeItems().sort((a, b) => b.added - a.added);
-  const body = $("#stockBody");
 
-  // Form toggle — must run regardless of empty state
-  (function setupFormToggle() {
-    const formEl = $("#itemForm");
-    const formToggle = $("#formToggle");
-    const formIcon = document.getElementById("formToggleIcon");
-    const cardH = formToggle && formToggle.closest(".card-h");
-    const hasExisting = single && items.length > 0;
-    const collapsed = hasExisting;
-    if (formEl) formEl.style.display = collapsed ? "none" : "";
-    if (formToggle) formToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    if (formIcon) formIcon.setAttribute("d", collapsed ? "M6 9l6 6 6-6" : "M18 15l-6-6-6 6");
-    if (cardH) {
-      cardH.style.cursor = "pointer";
-      cardH.onclick = () => {
-        const isHidden = formEl && formEl.style.display === "none";
-        if (formEl) formEl.style.display = isHidden ? "" : "none";
-        if (formToggle) formToggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
-        if (formIcon) formIcon.setAttribute("d", isHidden ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6");
-      };
+  // Auto-collapse the add form when items already exist
+  const formEl = $(“#itemForm”);
+  const formToggle = $(“#formToggle”);
+  const formIcon = document.getElementById(“formToggleIcon”);
+  const shouldCollapse = single && items.length > 0;
+  if (formEl) formEl.style.display = shouldCollapse ? “none” : “”;
+  if (formToggle) formToggle.setAttribute(“aria-expanded”, shouldCollapse ? “false” : “true”);
+  if (formIcon) formIcon.setAttribute(“d”, shouldCollapse ? “M6 9l6 6 6-6” : “M18 15l-6-6-6 6”);
+
+  const kanban = $(“#kanban”);
+  const empty = $(“#stockEmpty”);
+  if (!items.length) { empty.style.display = “block”; kanban.style.display = “none”; return; }
+  empty.style.display = “none”; kanban.style.display = “”;
+
+  const COLS = [
+    { stage: 'house',  label: 'En casa',   dotCls: 'kb-dot-house',  emptyMsg: 'Sin prendas en casa.<br>Aquí van las que aún no has listado.' },
+    { stage: 'listed', label: 'En Vinted', dotCls: 'kb-dot-listed', emptyMsg: 'Nada listado ahora.<br>Mueve prendas desde “En casa”.' },
+    { stage: 'sold',   label: 'Vendido',   dotCls: 'kb-dot-sold',   emptyMsg: '¡Sin ventas aún!<br>Mueve prendas listadas cuando se vendan.' }
+  ];
+
+  const grouped = { house: [], listed: [], sold: [] };
+  items.forEach(it => { if (grouped[it.stage]) grouped[it.stage].push(it); else grouped.listed.push(it); });
+
+  function cardActions(it) {
+    const del = `<button class=”kb-btn icon-only danger” aria-label=”Eliminar” data-del=”${it.id}” data-acc=”${it._acc.id}”>${I.trash}</button>`;
+    if (it.stage === 'house') {
+      return `<button class=”kb-btn primary” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”listed”>${I.bolt} Listar en Vinted</button>${del}`;
     }
-  })();
+    if (it.stage === 'listed') {
+      return `<button class=”kb-btn” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”house”>${I.box} A casa</button><button class=”kb-btn primary” data-move=”${it.id}” data-acc=”${it._acc.id}” data-to=”sold”>${I.coin} Vendida</button>${del}`;
+    }
+    return del;
+  }
 
-  if (!items.length) { $("#stockEmpty").style.display = "block"; $("#stockTable").style.display = "none"; return; }
-  $("#stockEmpty").style.display = "none"; $("#stockTable").style.display = "";
-  body.innerHTML = items.map(it => {
+  function renderCard(it) {
     const margin = it.price - it.cost;
-    const st = status(it);
-    const pill = st === "sold" ? `<span class="pill p-sold">${I.check.replace("<svg",'<svg style="width:13px;height:13px"')} Vendido</span>`
-      : st === "stale" ? `<span class="pill p-stale">${daysSince(it.added)}d parado</span>`
-      : `<span class="pill p-stock">En venta</span>`;
-    return `<tr>
-      <td><div class="cell-prod"><div class="thumb">${I.bag}</div><div><b>${esc(it.name)}</b><span>${esc(it.cat)}</span></div></div></td>
-      <td>${esc(it.brand)}</td>
-      ${DB.activeId === "all" ? `<td class="hide-mob"><div class="rank-item" style="padding:0;gap:7px"><div class="avatar av-${it._acc.color}" style="width:22px;height:22px;border-radius:6px;font-size:10px">${initials(it._acc.name)}</div></div></td>` : ""}
-      <td class="mono">${eur(it.cost, 2)}</td>
-      <td class="mono">${eur(it.price, 2)}</td>
-      <td class="mono ${margin >= 0 ? "up" : "down"}"><b>${margin >= 0 ? "+" : ""}${eur(margin, 2)}</b></td>
-      <td>${pill}</td>
-      <td><div style="display:flex;gap:6px;justify-content:flex-end">
-        ${!it.sold ? `<button class="act-btn" aria-label="Marcar como vendida" data-sell="${it.id}" data-acc="${it._acc.id}">${I.coin}</button>` : ""}
-        <button class="act-btn danger" aria-label="Eliminar prenda" data-del="${it.id}" data-acc="${it._acc.id}">${I.trash}</button>
-      </div></td>
-    </tr>`;
-  }).join("");
+    const staleTag = it.stage === 'listed' && daysSince(it.added) >= STALE
+      ? `<span class=”kb-stale”>${daysSince(it.added)}d parada</span>` : '';
+    const soldInfo = it.stage === 'sold' && it.soldDate
+      ? `<span class=”kb-sold-date”>· hace ${daysSince(it.soldDate)}d</span>` : '';
+    const accBadge = DB.activeId === 'all'
+      ? `<div class=”avatar av-${it._acc.color}” style=”width:16px;height:16px;border-radius:4px;font-size:8px;flex-shrink:0”>${initials(it._acc.name)}</div>` : '';
+    return `<div class=”kb-card”>
+      <div class=”kb-card-top”>
+        <div class=”kb-thumb”>${I.bag}</div>
+        <div class=”kb-info”>
+          <div class=”kb-name” title=”${esc(it.name)}”>${esc(it.name)}</div>
+          <div class=”kb-meta”>${accBadge}<span>${esc(it.brand)}</span><span>·</span><span>${esc(it.cat)}</span>${soldInfo}</div>
+        </div>
+      </div>
+      ${staleTag}
+      <div class=”kb-nums”>
+        <span class=”kb-cost”>${eur(it.cost, 2)}</span>
+        <span class=”kb-arrow”>→</span>
+        <span class=”kb-price”>${eur(it.price, 2)}</span>
+        <span class=”kb-margin ${margin >= 0 ? 'up' : 'down'}”><b>${margin >= 0 ? '+' : ''}${eur(margin, 2)}</b></span>
+      </div>
+      <div class=”kb-actions”>${cardActions(it)}</div>
+    </div>`;
+  }
 
-  // header adjust for account column
-  $("#invAcctHead").style.display = DB.activeId === "all" ? "" : "none";
+  kanban.innerHTML = COLS.map(col => {
+    const its = grouped[col.stage];
+    const val = its.reduce((s, it) => s + it.price, 0);
+    return `<div class=”kb-col”>
+      <div class=”kb-head”>
+        <span class=”kb-dot ${col.dotCls}”></span>
+        <span class=”kb-label-text”>${col.label}</span>
+        <span class=”kb-count”>${its.length}</span>
+        ${val > 0 ? `<span class=”kb-val”>${eur(val, 0)}</span>` : ''}
+      </div>
+      <div class=”kb-items”>
+        ${its.length ? its.map(renderCard).join('') : `<div class=”kb-empty”>${col.emptyMsg}</div>`}
+      </div>
+    </div>`;
+  }).join('');
 
-  $$("#stockBody [data-sell]").forEach(b => b.onclick = () => markSold(b.dataset.acc, b.dataset.sell));
-  $$("#stockBody [data-del]").forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
-
+  $$(“#kanban [data-move]”).forEach(b => b.onclick = () => moveStage(b.dataset.acc, b.dataset.move, b.dataset.to));
+  $$(“#kanban [data-del]”).forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
 }
 
 function addItem(e) {
   e.preventDefault();
   if (DB.activeId === "all") { toast("Elige una cuenta concreta primero"); return; }
   const acc = DB.accounts.find(a => a.id === DB.activeId);
+  const stageBtn = document.querySelector("#stageToggle .stage-opt.on");
+  const stage = stageBtn ? stageBtn.dataset.stage : 'house';
   acc.items.unshift({
     id: rid(),
     name: $("#f-name").value.trim(),
@@ -396,21 +441,26 @@ function addItem(e) {
     cat: $("#f-cat").value,
     cost: parseFloat($("#f-cost").value) || 0,
     price: parseFloat($("#f-price").value) || 0,
-    added: Date.now(), sold: false, soldDate: null
+    added: Date.now(), stage, sold: false, soldDate: null
   });
   save(); e.target.reset(); renderAll();
-  toast("Prenda añadida al inventario");
+  toast("Prenda añadida al pipeline");
 }
-function markSold(accId, id) {
+function moveStage(accId, itemId, newStage) {
   const acc = DB.accounts.find(a => a.id === accId);
-  const it = acc && acc.items.find(x => x.id === id);
+  const it = acc && acc.items.find(x => x.id === itemId);
   if (!it) return;
-  it.sold = true; it.soldDate = Date.now();
+  const prevStage = it.stage;
+  const prevSoldDate = it.soldDate;
+  it.stage = newStage;
+  it.sold = newStage === 'sold';
+  it.soldDate = newStage === 'sold' ? Date.now() : null;
   save(); renderAll();
-  toastWithUndo('Marcada como vendida', () => {
+  const labels = { house: 'Movida a En casa', listed: 'Listada en Vinted', sold: 'Marcada como vendida' };
+  toastWithUndo(labels[newStage], () => {
     const a = DB.accounts.find(a => a.id === accId);
-    const item = a && a.items.find(x => x.id === id);
-    if (item) { item.sold = false; item.soldDate = null; save(); renderAll(); }
+    const item = a && a.items.find(x => x.id === itemId);
+    if (item) { item.stage = prevStage; item.sold = prevStage === 'sold'; item.soldDate = prevSoldDate; save(); renderAll(); }
   });
 }
 function delItem(accId, id) {
@@ -434,9 +484,9 @@ function renderAccounts() {
   // aggregate header
   const all = [];
   DB.accounts.forEach(a => a.items.forEach(it => all.push(it)));
-  const totProfit = all.filter(x => x.sold).reduce((s, x) => s + (x.price - x.cost), 0);
-  const totStock = all.filter(x => !x.sold).length;
-  const totSold = all.filter(x => x.sold).length;
+  const totProfit = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.price - x.cost), 0);
+  const totStock = all.filter(x => x.stage !== 'sold').length;
+  const totSold = all.filter(x => x.stage === 'sold').length;
   $("#acctAgg").innerHTML = `
     <div class="stat"><div class="top"><span class="lbl">Perfiles</span><span class="ic">${I.users}</span></div><div class="num neu">${DB.accounts.length}</div><div class="delta neu">cuentas conectadas</div></div>
     <div class="stat"><div class="top"><span class="lbl">Stock total</span><span class="ic">${I.bag}</span></div><div class="num">${totStock}</div><div class="delta neu">prendas en venta</div></div>
@@ -444,8 +494,8 @@ function renderAccounts() {
     <div class="stat"><div class="top"><span class="lbl">Beneficio global</span><span class="ic">${I.coin}</span></div><div class="num up">${eur(totProfit)}</div><div class="delta up">combinado</div></div>`;
 
   $("#acctCards").innerHTML = DB.accounts.map(a => {
-    const ins = a.items.filter(x => !x.sold);
-    const sld = a.items.filter(x => x.sold);
+    const ins = a.items.filter(x => x.stage !== 'sold');
+    const sld = a.items.filter(x => x.stage === 'sold');
     const prof = sld.reduce((s, x) => s + (x.price - x.cost), 0);
     const stale = ins.filter(x => status(x) === "stale").length;
     return `<div class="acct-card ${DB.activeId === a.id ? "active" : ""}" data-acc="${a.id}">
@@ -637,6 +687,31 @@ async function init() {
   $("#itemForm").onsubmit = addItem;
   $("#optForm").onsubmit = genAd;
 
+  // form collapse toggle (add form header click)
+  const addFormHead = document.getElementById("addFormHead");
+  if (addFormHead) {
+    addFormHead.addEventListener("click", () => {
+      const formEl = document.getElementById("itemForm");
+      const toggle = document.getElementById("formToggle");
+      const icon = document.getElementById("formToggleIcon");
+      const isHidden = formEl && formEl.style.display === "none";
+      if (formEl) formEl.style.display = isHidden ? "" : "none";
+      if (toggle) toggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+      if (icon) icon.setAttribute("d", isHidden ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6");
+    });
+  }
+
+  // stage toggle (En casa / Ya en Vinted)
+  const stageToggle = document.getElementById("stageToggle");
+  if (stageToggle) {
+    stageToggle.addEventListener("click", e => {
+      const btn = e.target.closest(".stage-opt");
+      if (!btn) return;
+      stageToggle.querySelectorAll(".stage-opt").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+    });
+  }
+
   // "Otros" in brand datalist → clear field so user can type freely
   ["f-brand", "o-brand"].forEach(id => {
     const el = $("#" + id);
@@ -689,12 +764,9 @@ async function init() {
     });
   }
   function _applySearch() {
-    $$("#stockBody tr").forEach(tr => {
-      tr.style.display = (!_searchQ || tr.textContent.toLowerCase().includes(_searchQ)) ? "" : "none";
+    $$(".kb-card").forEach(card => {
+      card.style.display = (!_searchQ || card.textContent.toLowerCase().includes(_searchQ)) ? "" : "none";
     });
-    const emptyBySearch = _searchQ && !$$('#stockBody tr').some(tr => tr.style.display !== "none");
-    const stockEmpty = $("#stockEmpty");
-    if (stockEmpty && emptyBySearch) { stockEmpty.style.display = "block"; stockEmpty.querySelector("div").textContent = `Sin resultados para "${_searchQ}"`; }
   }
 
   renderTicker();
