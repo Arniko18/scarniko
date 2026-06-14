@@ -31,14 +31,19 @@ const I = {
   spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg>'
 };
 
+/* ---------- SUPABASE ---------- */
+const SUPA_URL = "https://fklsetwqfdmangromprj.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrbHNldHdxZmRtYW5ncm9tcHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjU1NTEsImV4cCI6MjA5NzA0MTU1MX0.RcOvY3R1SDegUJEz3eohOgVF-daDiz-OSnGPh1rCgQ4";
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+let _user = null;
+
 /* ---------- STATE ---------- */
-const STORE = "scarniko_v1";
 let DB = { accounts: [], activeId: "all", theme: "dark", seeded: false };
 
-function load() {
+async function load() {
   try {
-    const raw = localStorage.getItem(STORE);
-    if (raw) DB = Object.assign(DB, JSON.parse(raw));
+    const { data } = await supa.from("user_data").select("data").eq("user_id", _user.id).maybeSingle();
+    if (data && data.data) DB = Object.assign(DB, data.data);
   } catch (e) {}
   if (!DB.seeded || !DB.accounts || !DB.accounts.length) {
     DB.accounts = JSON.parse(JSON.stringify(SEED_ACCOUNTS)).map(a => {
@@ -47,11 +52,70 @@ function load() {
     });
     DB.seeded = true;
     DB.activeId = "all";
+    await save();
   }
-  save();
 }
-function save() { try { localStorage.setItem(STORE, JSON.stringify(DB)); } catch (e) {} }
+async function save() {
+  if (!_user) return;
+  try {
+    await supa.from("user_data").upsert({ user_id: _user.id, data: DB, updated_at: new Date().toISOString() });
+  } catch (e) {}
+}
 function rid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+/* ---------- AUTH ---------- */
+function showLogin() {
+  document.getElementById("loginOverlay").removeAttribute("hidden");
+  setupLoginForm();
+}
+
+function setupLoginForm() {
+  const form = document.getElementById("loginForm");
+  if (form._wired) return;
+  form._wired = true;
+  const emailEl = document.getElementById("loginEmail");
+  const passEl  = document.getElementById("loginPass");
+  const errEl   = document.getElementById("loginErr");
+  const submitBtn = document.getElementById("loginSubmit");
+  const toggleBtn = document.getElementById("loginToggle");
+  const titleEl = document.getElementById("loginTitle");
+  let isSignup = false;
+
+  toggleBtn.onclick = () => {
+    isSignup = !isSignup;
+    titleEl.textContent = isSignup ? "Crear cuenta" : "Iniciar sesión";
+    submitBtn.textContent = isSignup ? "Crear cuenta" : "Iniciar sesión";
+    toggleBtn.textContent = isSignup ? "¿Ya tienes cuenta? Iniciar sesión" : "¿Primera vez? Crear cuenta";
+    errEl.textContent = ""; errEl.style.color = "";
+  };
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errEl.textContent = ""; errEl.style.color = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Cargando…";
+    let result;
+    if (isSignup) {
+      result = await supa.auth.signUp({ email: emailEl.value.trim(), password: passEl.value });
+      if (!result.error && result.data.user && !result.data.session) {
+        errEl.style.color = "var(--lime)";
+        errEl.textContent = "Revisa tu email para confirmar la cuenta.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Crear cuenta";
+        return;
+      }
+    } else {
+      result = await supa.auth.signInWithPassword({ email: emailEl.value.trim(), password: passEl.value });
+    }
+    if (result.error) {
+      errEl.textContent = result.error.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = isSignup ? "Crear cuenta" : "Iniciar sesión";
+      return;
+    }
+    location.reload();
+  };
+}
 
 /* ---------- HELPERS ---------- */
 const STALE = 21;
@@ -543,8 +607,11 @@ function renderAll() {
 /* ============================================================
    INIT
    ============================================================ */
-function init() {
-  load();
+async function init() {
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) { showLogin(); return; }
+  _user = session.user;
+  await load();
   setTheme(DB.theme || "dark");
 
   // nav
@@ -584,12 +651,20 @@ function init() {
   });
   const resetBtn = document.getElementById("resetBtn");
   if (resetBtn) {
-    resetBtn.onclick = () => {
+    resetBtn.onclick = async () => {
       if (confirm("¿Restaurar los datos de demostración? Se borrará tu inventario actual.")) {
-        localStorage.removeItem(STORE); DB.seeded = false; DB.accounts = []; load(); renderAcctSwitcher(); renderAll(); toast("Datos restaurados");
+        await supa.from("user_data").delete().eq("user_id", _user.id);
+        DB = { accounts: [], activeId: "all", theme: DB.theme, seeded: false };
+        await load(); renderAcctSwitcher(); renderAll(); toast("Datos restaurados");
       }
     };
   }
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.onclick = async () => {
+    await supa.auth.signOut();
+    location.reload();
+  };
 
   // Keyboard shortcuts: 1–6 to switch views
   const VIEWS = ["dashboard", "radar", "stock", "accounts", "calendar", "optimizer"];

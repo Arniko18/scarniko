@@ -28,8 +28,36 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="login-overlay" hidden>
+  <div class="login-box">
+    <div class="login-brand">
+      <div class="mark"><span>S</span></div>
+      <div>
+        <div style="font-family:var(--f-display);font-weight:700;font-size:1rem;line-height:1.2">Scarniko</div>
+        <div style="font-size:11px;color:var(--faint)">Resell Engine</div>
+      </div>
+    </div>
+    <h2 class="login-title" id="loginTitle">Iniciar sesión</h2>
+    <p class="login-sub">Tu inventario, accesible desde cualquier dispositivo.</p>
+    <form id="loginForm" novalidate>
+      <div class="fld" style="margin-bottom:12px">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" placeholder="tu@email.com" autocomplete="email" required>
+      </div>
+      <div class="fld" style="margin-bottom:8px">
+        <label for="loginPass">Contraseña</label>
+        <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" required minlength="6">
+      </div>
+      <div id="loginErr" class="login-err"></div>
+      <button type="submit" id="loginSubmit" class="btn btn-primary btn-full">Iniciar sesión</button>
+    </form>
+    <button id="loginToggle" class="login-toggle">¿Primera vez? Crear cuenta</button>
+  </div>
+</div>
 <div class="bg-fx"></div>
 
 <div class="app">
@@ -81,6 +109,10 @@
         <button id="thDark" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5 A8 8 0 1 1 9.5 4 a6.2 6.2 0 0 0 10.5 10.5Z"/></svg><span>Oscuro</span></button>
         <button id="thLight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg><span>Claro</span></button>
       </div>
+      <button id="logoutBtn" class="logout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Cerrar sesión</span>
+      </button>
     </div>
   </aside>
 
