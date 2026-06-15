@@ -651,6 +651,14 @@ tbody tr:hover td { background: var(--surface-2); }
 }
 .kb-sold-date { font-size: 10.5px; color: var(--faint); font-family: var(--f-mono); }
 
+.kb-qty-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
+  color: var(--primary); font-family: var(--f-mono); font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; flex-shrink: 0;
+}
+.kb-qty-total { font-size: 10.5px; color: var(--faint); margin-left: 2px; }
+
 /* Stage selector in the add form */
 .stage-toggle { display: flex; gap: 6px; }
 .stage-opt {

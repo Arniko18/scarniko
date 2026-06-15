@@ -171,7 +171,7 @@ function renderAcctSwitcher() {
     ${I.chev.replace("<svg", '<svg class="chev"')}`;
 
   const opt = (a) => {
-    const live = a.items.filter(x => x.stage !== 'sold').length;
+    const live = a.items.filter(x => x.stage !== 'sold').reduce((s, x) => s + (x.qty || 1), 0);
     return `<div class="acct-opt ${DB.activeId === a.id ? "active" : ""}" data-acc="${a.id}">
       <div class="avatar av-${a.color}">${initials(a.name)}</div>
       <div class="meta"><b>${esc(a.name)}</b><span>${esc(a.handle)}</span></div>
@@ -209,12 +209,15 @@ function renderDashboard() {
   const items = scopeItems();
   const inStock = items.filter(x => x.stage !== 'sold');
   const sold = items.filter(x => x.stage === 'sold');
-  const invested = items.reduce((s, x) => s + x.cost, 0);
-  const stockValue = inStock.reduce((s, x) => s + x.price, 0);
-  const profit = sold.reduce((s, x) => s + (x.price - x.cost), 0);
-  const revenue = sold.reduce((s, x) => s + x.price, 0);
-  const stale = inStock.filter(x => status(x) === "stale").length;
-  const sellThrough = items.length ? Math.round((sold.length / items.length) * 100) : 0;
+  const totalUnitsInStock = inStock.reduce((s, x) => s + (x.qty || 1), 0);
+  const totalUnitsSold = sold.reduce((s, x) => s + (x.qty || 1), 0);
+  const invested = items.reduce((s, x) => s + x.cost * (x.qty || 1), 0);
+  const stockValue = inStock.reduce((s, x) => s + x.price * (x.qty || 1), 0);
+  const profit = sold.reduce((s, x) => s + (x.price - x.cost) * (x.qty || 1), 0);
+  const revenue = sold.reduce((s, x) => s + x.price * (x.qty || 1), 0);
+  const stale = inStock.filter(x => status(x) === 'stale').reduce((s, x) => s + (x.qty || 1), 0);
+  const totalUnits = totalUnitsInStock + totalUnitsSold;
+  const sellThrough = totalUnits ? Math.round((totalUnitsSold / totalUnits) * 100) : 0;
 
   // Dynamic heading
   const titleEl = document.getElementById("dashTitle");
@@ -227,13 +230,15 @@ function renderDashboard() {
   if (subtitleEl) {
     const listed = items.filter(x => x.stage === 'listed');
     const house = items.filter(x => x.stage === 'house');
+    const listedUnits = listed.reduce((s, x) => s + (x.qty || 1), 0);
+    const houseUnits = house.reduce((s, x) => s + (x.qty || 1), 0);
     const staleNote = stale > 0 ? ` · ${stale} parada${stale !== 1 ? "s" : ""}` : "";
-    subtitleEl.textContent = `${listed.length} en Vinted · ${house.length} en casa · ${sold.length} vendidas${staleNote}`;
+    subtitleEl.textContent = `${listedUnits} en Vinted · ${houseUnits} en casa · ${totalUnitsSold} vendidas${staleNote}`;
   }
 
   const tiles = [
-    { lbl: "En venta", val: inStock.length, ic: I.bag, cls: "neu", delta: `${stale} parados`, dcls: stale ? "down" : "up", seed: 3, color: "var(--teal)" },
-    { lbl: "Vendidas", val: sold.length, ic: I.check, cls: "up", delta: `${sellThrough}% sell-through`, dcls: "up", seed: 7, color: "var(--lime)" },
+    { lbl: "En venta", val: totalUnitsInStock, ic: I.bag, cls: "neu", delta: `${stale} parados`, dcls: stale ? "down" : "up", seed: 3, color: "var(--teal)" },
+    { lbl: "Vendidas", val: totalUnitsSold, ic: I.check, cls: "up", delta: `${sellThrough}% sell-through`, dcls: "up", seed: 7, color: "var(--lime)" },
     { lbl: "Beneficio neto", val: profit, suffix: " €", ic: I.coin, cls: profit >= 0 ? "up" : "down", delta: `de ${eur(revenue)} ventas`, dcls: "neu", seed: 11, color: "var(--lime)" },
     { lbl: "Valor en stock", val: stockValue, suffix: " €", ic: I.euro, cls: "neu", delta: `${eur(invested)} invertido`, dcls: "neu", seed: 5, color: "var(--violet)" }
   ];
@@ -247,7 +252,7 @@ function renderDashboard() {
   $$("#dashStats .num").forEach(el => countUp(el, +el.dataset.cnt, { suffix: el.dataset.suffix }));
 
   // health gauge
-  const health = Math.min(100, Math.round(sellThrough * 0.5 + (100 - Math.min(100, stale * 12)) * 0.3 + Math.min(100, sold.length * 6) * 0.2));
+  const health = Math.min(100, Math.round(sellThrough * 0.5 + (100 - Math.min(100, stale * 12)) * 0.3 + Math.min(100, totalUnitsSold * 6) * 0.2));
   $("#healthGauge").innerHTML = `
     <div class="gauge">
       ${gaugeRing(health, { color: "var(--primary)" })}
@@ -262,14 +267,15 @@ function renderDashboard() {
     const names = inStock.filter(x => status(x) === "stale").map(x => x.name).slice(0, 2).join(", ");
     recos.push({ c: "amber", ic: I.clock, t: `<b>${stale} prenda(s)</b> llevan +${STALE} días sin vender (${esc(names)}). Republica bajando precio y renueva las fotos.` });
   }
-  if (sold.length >= 3) {
-    const byCat = {}; sold.forEach(x => byCat[x.cat] = (byCat[x.cat] || 0) + 1);
+  if (totalUnitsSold >= 3) {
+    const byCat = {}; sold.forEach(x => byCat[x.cat] = (byCat[x.cat] || 0) + (x.qty || 1));
     const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
     recos.push({ c: "lime", ic: I.trend, t: `Tu categoría estrella es <b>${esc(top[0])}</b> (${top[1]} ventas). Compra más de ahí: es tu dinero fácil.` });
   }
   const hotInStock = inStock.filter(x => MARKET_BRANDS.find(b => b.name.toLowerCase() === (x.brand || "").toLowerCase() && (b.heat === "hot" || b.heat === "rising")));
   if (hotInStock.length) {
-    recos.push({ c: "teal", ic: I.fire, t: `Tienes <b>${hotInStock.length} prenda(s)</b> de marcas que vuelan ahora (${esc(hotInStock.slice(0,2).map(x=>x.brand).join(", "))}). Súbelas en hora punta esta semana.` });
+    const hotUnits = hotInStock.reduce((s, x) => s + (x.qty || 1), 0);
+    recos.push({ c: "teal", ic: I.fire, t: `Tienes <b>${hotUnits} prenda(s)</b> de marcas que vuelan ahora (${esc(hotInStock.slice(0,2).map(x=>x.brand).join(", "))}). Súbelas en hora punta esta semana.` });
   }
   recos.push({ c: "violet", ic: I.clock, t: `El <b>domingo 20–22h</b> es el mejor momento global para publicar. Mira el <b>Calendario</b> para programar tus drops.` });
   recos.push({ c: "teal", ic: I.radar, t: `Antes de tu próxima compra, revisa el <b>Radar de Mercado</b>: Salomon (+18%) y New Balance (+14%) están explotando.` });
@@ -279,9 +285,11 @@ function renderDashboard() {
 
   // mini account overview
   $("#dashAccts").innerHTML = DB.accounts.map(a => {
-    const ins = a.items.filter(x => !x.sold).length;
-    const sld = a.items.filter(x => x.sold).length;
-    const prof = a.items.filter(x => x.sold).reduce((s, x) => s + (x.price - x.cost), 0);
+    const insItems = a.items.filter(x => x.stage !== 'sold');
+    const sldItems = a.items.filter(x => x.stage === 'sold');
+    const ins = insItems.reduce((s, x) => s + (x.qty || 1), 0);
+    const sld = sldItems.reduce((s, x) => s + (x.qty || 1), 0);
+    const prof = sldItems.reduce((s, x) => s + (x.price - x.cost) * (x.qty || 1), 0);
     return `<div class="rank-item" style="cursor:pointer" data-acc="${a.id}">
       <div class="avatar av-${a.color}">${initials(a.name)}</div>
       <div class="info"><b>${esc(a.name)}</b><span>${ins} en venta · ${sld} vendidas</span></div>
@@ -372,28 +380,37 @@ function renderInventory() {
 
   function cardActions(it) {
     const del = `<button class="kb-btn icon-only danger" aria-label="Eliminar" data-del="${it.id}" data-acc="${it._acc.id}">${I.trash}</button>`;
+    const qty = it.qty || 1;
     if (it.stage === 'house') {
       return `<button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="listed">${I.bolt} Listar en Vinted</button>${del}`;
     }
     if (it.stage === 'listed') {
-      return `<button class="kb-btn" data-move="${it.id}" data-acc="${it._acc.id}" data-to="house">${I.box} A casa</button><button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="sold">${I.coin} Vendida</button>${del}`;
+      const backBtn = `<button class="kb-btn" data-move="${it.id}" data-acc="${it._acc.id}" data-to="house">${I.box} A casa</button>`;
+      if (qty > 1) {
+        return `${backBtn}<button class="kb-btn" data-sell1="${it.id}" data-acc="${it._acc.id}">${I.coin} Vender 1</button><button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="sold">${I.coin} Vender todo</button>${del}`;
+      }
+      return `${backBtn}<button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="sold">${I.coin} Vendida</button>${del}`;
     }
     return del;
   }
 
   function renderCard(it) {
+    const qty = it.qty || 1;
     const margin = it.price - it.cost;
+    const totalMargin = margin * qty;
     const staleTag = it.stage === 'listed' && daysSince(it.added) >= STALE
       ? `<span class="kb-stale">${daysSince(it.added)}d parada</span>` : '';
     const soldInfo = it.stage === 'sold' && it.soldDate
       ? `<span class="kb-sold-date">· hace ${daysSince(it.soldDate)}d</span>` : '';
     const accBadge = DB.activeId === 'all'
       ? `<div class="avatar av-${it._acc.color}" style="width:16px;height:16px;border-radius:4px;font-size:8px;flex-shrink:0">${initials(it._acc.name)}</div>` : '';
+    const qtyBadge = qty > 1 ? `<span class="kb-qty-badge">×${qty}</span>` : '';
+    const qtyTotal = qty > 1 ? `<span class="kb-qty-total">(${totalMargin >= 0 ? '+' : ''}${eur(totalMargin, 2)} total)</span>` : '';
     return `<div class="kb-card">
       <div class="kb-card-top">
         <div class="kb-thumb">${I.bag}</div>
         <div class="kb-info">
-          <div class="kb-name" title="${esc(it.name)}">${esc(it.name)}</div>
+          <div class="kb-name" title="${esc(it.name)}">${esc(it.name)}${qtyBadge}</div>
           <div class="kb-meta">${accBadge}<span>${esc(it.brand)}</span><span>·</span><span>${esc(it.cat)}</span>${soldInfo}</div>
         </div>
       </div>
@@ -403,6 +420,7 @@ function renderInventory() {
         <span class="kb-arrow">→</span>
         <span class="kb-price">${eur(it.price, 2)}</span>
         <span class="kb-margin ${margin >= 0 ? 'up' : 'down'}"><b>${margin >= 0 ? '+' : ''}${eur(margin, 2)}</b></span>
+        ${qtyTotal}
       </div>
       <div class="kb-actions">${cardActions(it)}</div>
     </div>`;
@@ -410,12 +428,13 @@ function renderInventory() {
 
   kanban.innerHTML = COLS.map(col => {
     const its = grouped[col.stage];
-    const val = its.reduce((s, it) => s + it.price, 0);
+    const unitCount = its.reduce((s, it) => s + (it.qty || 1), 0);
+    const val = its.reduce((s, it) => s + it.price * (it.qty || 1), 0);
     return `<div class="kb-col">
       <div class="kb-head">
         <span class="kb-dot ${col.dotCls}"></span>
         <span class="kb-label-text">${col.label}</span>
-        <span class="kb-count">${its.length}</span>
+        <span class="kb-count">${unitCount}</span>
         ${val > 0 ? `<span class="kb-val">${eur(val, 0)}</span>` : ''}
       </div>
       <div class="kb-items">
@@ -425,6 +444,7 @@ function renderInventory() {
   }).join('');
 
   $$("#kanban [data-move]").forEach(b => b.onclick = () => moveStage(b.dataset.acc, b.dataset.move, b.dataset.to));
+  $$("#kanban [data-sell1]").forEach(b => b.onclick = () => sellOne(b.dataset.acc, b.dataset.sell1));
   $$("#kanban [data-del]").forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
 }
 
@@ -441,11 +461,28 @@ function addItem(e) {
     cat: $("#f-cat").value,
     cost: parseFloat($("#f-cost").value) || 0,
     price: parseFloat($("#f-price").value) || 0,
+    qty: Math.max(1, parseInt($("#f-qty").value) || 1),
     added: Date.now(), stage, sold: false, soldDate: null
   });
   save(); e.target.reset(); renderAll();
   toast("Prenda añadida al pipeline");
 }
+function sellOne(accId, itemId) {
+  const acc = DB.accounts.find(a => a.id === accId);
+  const it = acc && acc.items.find(x => x.id === itemId);
+  if (!it) return;
+  const qty = it.qty || 1;
+  if (qty <= 1) { moveStage(accId, itemId, 'sold'); return; }
+  it.qty = qty - 1;
+  acc.items.push({
+    id: rid(), name: it.name, brand: it.brand, cat: it.cat,
+    cost: it.cost, price: it.price, qty: 1,
+    added: it.added, stage: 'sold', sold: true, soldDate: Date.now()
+  });
+  save(); renderAll();
+  toast(`1 unidad vendida · quedan ${it.qty}`);
+}
+
 function moveStage(accId, itemId, newStage) {
   const acc = DB.accounts.find(a => a.id === accId);
   const it = acc && acc.items.find(x => x.id === itemId);
@@ -484,9 +521,9 @@ function renderAccounts() {
   // aggregate header
   const all = [];
   DB.accounts.forEach(a => a.items.forEach(it => all.push(it)));
-  const totProfit = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.price - x.cost), 0);
-  const totStock = all.filter(x => x.stage !== 'sold').length;
-  const totSold = all.filter(x => x.stage === 'sold').length;
+  const totProfit = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.price - x.cost) * (x.qty || 1), 0);
+  const totStock = all.filter(x => x.stage !== 'sold').reduce((s, x) => s + (x.qty || 1), 0);
+  const totSold = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.qty || 1), 0);
   $("#acctAgg").innerHTML = `
     <div class="stat"><div class="top"><span class="lbl">Perfiles</span><span class="ic">${I.users}</span></div><div class="num neu">${DB.accounts.length}</div><div class="delta neu">cuentas conectadas</div></div>
     <div class="stat"><div class="top"><span class="lbl">Stock total</span><span class="ic">${I.bag}</span></div><div class="num">${totStock}</div><div class="delta neu">prendas en venta</div></div>
@@ -494,10 +531,12 @@ function renderAccounts() {
     <div class="stat"><div class="top"><span class="lbl">Beneficio global</span><span class="ic">${I.coin}</span></div><div class="num up">${eur(totProfit)}</div><div class="delta up">combinado</div></div>`;
 
   $("#acctCards").innerHTML = DB.accounts.map(a => {
-    const ins = a.items.filter(x => x.stage !== 'sold');
-    const sld = a.items.filter(x => x.stage === 'sold');
-    const prof = sld.reduce((s, x) => s + (x.price - x.cost), 0);
-    const stale = ins.filter(x => status(x) === "stale").length;
+    const insItems = a.items.filter(x => x.stage !== 'sold');
+    const sldItems = a.items.filter(x => x.stage === 'sold');
+    const ins = insItems.reduce((s, x) => s + (x.qty || 1), 0);
+    const sld = sldItems.reduce((s, x) => s + (x.qty || 1), 0);
+    const prof = sldItems.reduce((s, x) => s + (x.price - x.cost) * (x.qty || 1), 0);
+    const stale = insItems.filter(x => status(x) === "stale").length;
     return `<div class="acct-card ${DB.activeId === a.id ? "active" : ""}" data-acc="${a.id}">
       <div class="ah">
         <div class="avatar av-${a.color}">${initials(a.name)}</div>
@@ -505,8 +544,8 @@ function renderAccounts() {
         <span class="live-badge"><span class="pulse-dot"></span>LIVE</span>
       </div>
       <div class="acct-mini">
-        <div class="m"><b>${ins.length}</b><span>En venta</span></div>
-        <div class="m"><b class="up">${sld.length}</b><span>Vendidas</span></div>
+        <div class="m"><b>${ins}</b><span>En venta</span></div>
+        <div class="m"><b class="up">${sld}</b><span>Vendidas</span></div>
         <div class="m"><b class="up">${eur(prof)}</b><span>Beneficio</span></div>
       </div>
       <div class="acct-foot">
