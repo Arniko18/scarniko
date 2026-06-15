@@ -112,6 +112,13 @@ function setupLoginForm() {
     submitBtn.textContent = "Cargando…";
     let result;
     if (isSignup) {
+      const ALLOWED = ["arnau.sala8@gmail.com"];
+      if (!ALLOWED.includes(emailEl.value.trim().toLowerCase())) {
+        errEl.textContent = "Registro no disponible en esta aplicación.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Crear cuenta";
+        return;
+      }
       result = await supa.auth.signUp({ email: emailEl.value.trim(), password: passEl.value });
       if (!result.error && result.data.user && !result.data.session) {
         errEl.style.color = "var(--lime)";
