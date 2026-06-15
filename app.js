@@ -347,11 +347,17 @@ function renderInventory() {
   const single = DB.activeId !== "all";
   const targetName = single ? DB.accounts.find(a => a.id === DB.activeId)?.name : null;
 
-  $("#invFormNote").textContent = single
-    ? `Se añadirá a "${targetName}".`
-    : "Selecciona una cuenta concreta para añadir prendas.";
-  $("#invAddBtn").disabled = !single;
-  $("#invAddBtn").style.opacity = single ? "1" : "0.45";
+  // Account selector: visible only in "all accounts" view
+  const accWrap = document.getElementById("f-acc-wrap");
+  const accSelect = document.getElementById("f-acc");
+  if (accWrap && accSelect) {
+    accWrap.style.display = single ? "none" : "";
+    accSelect.innerHTML = DB.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+  }
+
+  $("#invFormNote").textContent = single ? `Se añadirá a "${targetName}".` : "Elige la cuenta y añade la prenda.";
+  $("#invAddBtn").disabled = false;
+  $("#invAddBtn").style.opacity = "1";
 
   const items = scopeItems().sort((a, b) => b.added - a.added);
 
@@ -450,8 +456,9 @@ function renderInventory() {
 
 function addItem(e) {
   e.preventDefault();
-  if (DB.activeId === "all") { toast("Elige una cuenta concreta primero"); return; }
-  const acc = DB.accounts.find(a => a.id === DB.activeId);
+  const targetId = DB.activeId !== "all" ? DB.activeId : document.getElementById("f-acc")?.value;
+  const acc = DB.accounts.find(a => a.id === targetId);
+  if (!acc) { toast("Elige una cuenta primero"); return; }
   const stageBtn = document.querySelector("#stageToggle .stage-opt.on");
   const stage = stageBtn ? stageBtn.dataset.stage : 'house';
   acc.items.unshift({
