@@ -743,3 +743,33 @@ tbody tr:hover td { background: var(--surface-2); }
 }
 .logout-btn:hover { color: var(--dim); border-color: var(--border); }
 .logout-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ============================================================
+   TOKEN MANAGEMENT
+   ============================================================ */
+.token-mgmt {
+  border: 1px solid var(--border-2);
+}
+.token-mgmt summary {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--faint);
+  letter-spacing: 0.02em; cursor: pointer; list-style: none; padding: 2px 0;
+  user-select: none;
+}
+.token-mgmt summary::-webkit-details-marker { display: none; }
+.token-mgmt summary:hover { color: var(--dim); }
+.token-mgmt[open] summary { color: var(--dim); margin-bottom: 18px; }
+.token-body { display: flex; flex-direction: column; gap: 14px; }
+.token-hint {
+  font-size: 12px; color: var(--faint); line-height: 1.5;
+  background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  border: 1px solid var(--border-2); border-radius: var(--r-sm);
+  padding: 10px 13px;
+}
+.token-hint b { color: var(--dim); }
+.token-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .token-fields { grid-template-columns: 1fr; } }
+.token-footer { display: flex; align-items: center; gap: 14px; }
+.token-status { font-size: 11.5px; color: var(--faint); font-family: var(--f-mono); }
+.req { font-size: 10px; font-weight: 700; color: var(--teal); text-transform: uppercase; margin-left: 4px; letter-spacing: 0.04em; }
+.opt { font-size: 10px; color: var(--faint); margin-left: 4px; }

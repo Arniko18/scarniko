@@ -799,6 +799,36 @@ function navigate(view) {
   if (view === "radar") { setTimeout(startRadar, 60); }
 }
 
+/* ============================================================
+   VINTED TOKEN MANAGEMENT
+   ============================================================ */
+function jwtExpFrontend(tok) {
+  try {
+    return JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp || 0;
+  } catch { return 0; }
+}
+
+async function saveVintedTokens(accessToken, refreshToken) {
+  try {
+    const { error } = await supa.from("vinted_auth").upsert(
+      { id: 1, access_token: accessToken, refresh_token: refreshToken || null,
+        expires_at: jwtExpFrontend(accessToken), updated_at: new Date().toISOString() },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
+    radarLiveLoaded = false;
+    document.getElementById("t-access").value = "";
+    document.getElementById("t-refresh").value = "";
+    document.getElementById("tokenStatus").textContent = "Guardado · actualizando radar...";
+    toast("Token guardado");
+    await loadRadarData();
+    document.getElementById("tokenStatus").textContent = "Token activo · el radar usa datos en tiempo real";
+  } catch (e) {
+    document.getElementById("tokenStatus").textContent = "Error: " + e.message;
+    toast("Error guardando token");
+  }
+}
+
 function renderBrandList() {
   const set = new Set([...MARKET_BRANDS.map(b => b.name), ...DB.accounts.flatMap(a => a.items.map(i => i.brand).filter(b => b && b !== "—")), ...DB.house.map(i => i.brand).filter(b => b && b !== "—")]);
   $("#brands").innerHTML = [...set].map(b => `<option value="${esc(b)}">`).join("") + "<option value=\"Otros\">";
@@ -892,6 +922,17 @@ async function init() {
         DB = { accounts: [], activeId: "all", theme: DB.theme, seeded: false };
         await load(); renderAcctSwitcher(); renderAll(); toast("Datos restaurados");
       }
+    };
+  }
+
+  // Vinted token save
+  const saveTokenBtn = document.getElementById("saveTokenBtn");
+  if (saveTokenBtn) {
+    saveTokenBtn.onclick = () => {
+      const at = document.getElementById("t-access")?.value.trim();
+      const rt = document.getElementById("t-refresh")?.value.trim();
+      if (!at) { toast("Pega el access_token primero"); return; }
+      saveVintedTokens(at, rt || null);
     };
   }
 
