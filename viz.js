@@ -290,6 +290,7 @@ const Radar = (function () {
       window.addEventListener("resize", () => { resize(); });
     },
     refreshColors() { readColors(); },
+    update(brandData) { brands = brandData; layout(); },
     stop() { if (raf) cancelAnimationFrame(raf); }
   };
 })();

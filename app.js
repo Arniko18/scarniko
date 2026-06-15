@@ -310,6 +310,50 @@ function renderDashboard() {
    ============================================================ */
 let radarStarted = false;
 let radarTries = 0;
+let radarLiveLoaded = false;
+
+async function loadRadarData() {
+  if (radarLiveLoaded) return;
+  const statusEl = document.getElementById("radarDataStatus");
+  if (statusEl) statusEl.innerHTML = '<span class="pulse-dot"></span>Actualizando datos desde Vinted...';
+  try {
+    const res = await fetch("/api/radar");
+    if (res.status === 401) {
+      const d = await res.json().catch(() => ({}));
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · actualiza VINTED_TOKEN en Vercel';
+      toast("Token Vinted caducado — datos estáticos activos");
+      return;
+    }
+    if (!res.ok) {
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
+      return;
+    }
+    const data = await res.json();
+    if (data.error) {
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
+      return;
+    }
+    // Merge live demand into MARKET_BRANDS (keep static heat/trend/note)
+    data.brands.forEach(live => {
+      const b = MARKET_BRANDS.find(m => m.name === live.name);
+      if (b) {
+        b.demand = live.demand;
+        b.heat = live.heat;
+      }
+    });
+    radarLiveLoaded = true;
+    renderRadarSide();
+    renderTicker();
+    if (radarStarted) Radar.update(MARKET_BRANDS);
+    const ts = new Date(data.updatedAt);
+    const mins = Math.round((Date.now() - ts.getTime()) / 60000);
+    const minsLabel = mins < 2 ? "ahora mismo" : `hace ${mins} min`;
+    if (statusEl) statusEl.innerHTML = `<span class="pulse-dot"></span>Datos en tiempo real · Vinted API · ${minsLabel}`;
+  } catch (_) {
+    if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
+  }
+}
+
 function startRadar() {
   if (radarStarted) return;
   const c = $("#radarCanvas");
@@ -322,6 +366,7 @@ function startRadar() {
   radarStarted = true;
   const skeleton = document.getElementById("radarSkeleton");
   if (skeleton) skeleton.style.display = "none";
+  loadRadarData();
 }
 function renderRadarSide() {
   const ranked = [...MARKET_BRANDS].sort((a, b) => b.demand - a.demand).slice(0, 12);
