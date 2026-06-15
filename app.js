@@ -38,27 +38,34 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 let _user = null;
 
 /* ---------- STATE ---------- */
-let DB = { accounts: [], activeId: "all", theme: "dark", seeded: false };
+let DB = { accounts: [], house: [], activeId: "all", theme: "dark", seeded: false };
 
 async function load() {
   try {
     const { data } = await supa.from("user_data").select("data").eq("user_id", _user.id).maybeSingle();
     if (data && data.data) DB = Object.assign(DB, data.data);
   } catch (e) {}
-  // Migrate items that predate the stage field
+  if (!DB.house) DB.house = [];
+  // Migrate: stage field + move house items from accounts to global pool
   if (DB.accounts) {
     DB.accounts.forEach(a => {
       a.items = (a.items || []).map(it => {
         if (!it.stage) it.stage = it.sold ? 'sold' : 'listed';
         return it;
       });
+      const houseItems = a.items.filter(it => it.stage === 'house');
+      houseItems.forEach(it => { if (!DB.house.find(h => h.id === it.id)) DB.house.push(it); });
+      a.items = a.items.filter(it => it.stage !== 'house');
     });
   }
   if (!DB.seeded || !DB.accounts || !DB.accounts.length) {
-    DB.accounts = JSON.parse(JSON.stringify(SEED_ACCOUNTS)).map(a => {
-      a.items = a.items.map(it => ({ id: rid(), ...it }));
-      return a;
+    const seed = JSON.parse(JSON.stringify(SEED_ACCOUNTS));
+    DB.house = [];
+    seed.forEach(a => {
+      a.items.filter(it => it.stage === 'house').forEach(it => DB.house.push({ id: rid(), ...it }));
+      a.items = a.items.filter(it => it.stage !== 'house').map(it => ({ id: rid(), ...it }));
     });
+    DB.accounts = seed;
     DB.seeded = true;
     DB.activeId = "all";
     await save();
@@ -206,7 +213,7 @@ function switchAccount(id) {
    DASHBOARD
    ============================================================ */
 function renderDashboard() {
-  const items = scopeItems();
+  const items = [...scopeItems(), ...DB.house.map(it => ({ ...it, _acc: null }))];
   const inStock = items.filter(x => x.stage !== 'sold');
   const sold = items.filter(x => x.stage === 'sold');
   const totalUnitsInStock = inStock.reduce((s, x) => s + (x.qty || 1), 0);
@@ -347,32 +354,36 @@ function renderInventory() {
   const single = DB.activeId !== "all";
   const targetName = single ? DB.accounts.find(a => a.id === DB.activeId)?.name : null;
 
-  // Account selector: visible only in "all accounts" view
+  // Account selector: only needed when listing (not house) from all-accounts view
   const accWrap = document.getElementById("f-acc-wrap");
   const accSelect = document.getElementById("f-acc");
-  if (accWrap && accSelect) {
-    accWrap.style.display = single ? "none" : "";
-    accSelect.innerHTML = DB.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
-  }
+  if (accSelect) accSelect.innerHTML = DB.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+  const curStageBtn = document.querySelector("#stageToggle .stage-opt.on");
+  const curStage = curStageBtn ? curStageBtn.dataset.stage : 'house';
+  if (accWrap) accWrap.style.display = (!single && curStage === 'listed') ? "" : "none";
 
-  $("#invFormNote").textContent = single ? `Se añadirá a "${targetName}".` : "Elige la cuenta y añade la prenda.";
+  $("#invFormNote").textContent = single
+    ? `En Vinted: cuenta "${targetName}". En casa: pool global.`
+    : "En casa: pool global. En Vinted: elige cuenta.";
   $("#invAddBtn").disabled = false;
   $("#invAddBtn").style.opacity = "1";
 
-  const items = scopeItems().sort((a, b) => b.added - a.added);
+  const accountItems = scopeItems().sort((a, b) => b.added - a.added);
+  const houseItems = [...DB.house].sort((a, b) => b.added - a.added).map(it => ({ ...it, _acc: null }));
 
   // Auto-collapse the add form when items already exist
   const formEl = $("#itemForm");
   const formToggle = $("#formToggle");
   const formIcon = document.getElementById("formToggleIcon");
-  const shouldCollapse = single && items.length > 0;
+  const hasItems = accountItems.length > 0 || houseItems.length > 0;
+  const shouldCollapse = hasItems;
   if (formEl) formEl.style.display = shouldCollapse ? "none" : "";
   if (formToggle) formToggle.setAttribute("aria-expanded", shouldCollapse ? "false" : "true");
   if (formIcon) formIcon.setAttribute("d", shouldCollapse ? "M6 9l6 6 6-6" : "M18 15l-6-6-6 6");
 
   const kanban = $("#kanban");
   const empty = $("#stockEmpty");
-  if (!items.length) { empty.style.display = "block"; kanban.style.display = "none"; return; }
+  if (!accountItems.length && !houseItems.length) { empty.style.display = "block"; kanban.style.display = "none"; return; }
   empty.style.display = "none"; kanban.style.display = "";
 
   const COLS = [
@@ -381,17 +392,25 @@ function renderInventory() {
     { stage: 'sold',   label: 'Vendido',   dotCls: 'kb-dot-sold',   emptyMsg: '¡Sin ventas aún!<br>Mueve prendas listadas cuando se vendan.' }
   ];
 
-  const grouped = { house: [], listed: [], sold: [] };
-  items.forEach(it => { if (grouped[it.stage]) grouped[it.stage].push(it); else grouped.listed.push(it); });
+  const grouped = {
+    house: houseItems,
+    listed: accountItems.filter(it => it.stage === 'listed'),
+    sold: accountItems.filter(it => it.stage === 'sold')
+  };
 
   function cardActions(it) {
-    const del = `<button class="kb-btn icon-only danger" aria-label="Eliminar" data-del="${it.id}" data-acc="${it._acc.id}">${I.trash}</button>`;
     const qty = it.qty || 1;
     if (it.stage === 'house') {
-      return `<button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="listed">${I.bolt} Listar en Vinted</button>${del}`;
+      const del = `<button class="kb-btn icon-only danger" aria-label="Eliminar" data-del-house="${it.id}">${I.trash}</button>`;
+      if (DB.activeId !== 'all') {
+        return `<button class="kb-btn primary" data-list="${it.id}" data-to-acc="${DB.activeId}">${I.bolt} Listar en Vinted</button>${del}`;
+      }
+      const accOpts = DB.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+      return `<select class="kb-acc-sel" data-sel-for="${it.id}">${accOpts}</select><button class="kb-btn primary" data-list="${it.id}">${I.bolt} Listar</button>${del}`;
     }
+    const del = `<button class="kb-btn icon-only danger" aria-label="Eliminar" data-del="${it.id}" data-acc="${it._acc.id}">${I.trash}</button>`;
     if (it.stage === 'listed') {
-      const backBtn = `<button class="kb-btn" data-move="${it.id}" data-acc="${it._acc.id}" data-to="house">${I.box} A casa</button>`;
+      const backBtn = `<button class="kb-btn" data-return-house="${it.id}" data-acc="${it._acc.id}">${I.box} A casa</button>`;
       if (qty > 1) {
         return `${backBtn}<button class="kb-btn" data-sell1="${it.id}" data-acc="${it._acc.id}">${I.coin} Vender 1</button><button class="kb-btn primary" data-move="${it.id}" data-acc="${it._acc.id}" data-to="sold">${I.coin} Vender todo</button>${del}`;
       }
@@ -452,16 +471,20 @@ function renderInventory() {
   $$("#kanban [data-move]").forEach(b => b.onclick = () => moveStage(b.dataset.acc, b.dataset.move, b.dataset.to));
   $$("#kanban [data-sell1]").forEach(b => b.onclick = () => sellOne(b.dataset.acc, b.dataset.sell1));
   $$("#kanban [data-del]").forEach(b => b.onclick = () => delItem(b.dataset.acc, b.dataset.del));
+  $$("#kanban [data-del-house]").forEach(b => b.onclick = () => delHouseItem(b.dataset.delHouse));
+  $$("#kanban [data-return-house]").forEach(b => b.onclick = () => returnToHouse(b.dataset.acc, b.dataset.returnHouse));
+  $$("#kanban [data-list]").forEach(b => b.onclick = () => {
+    const itemId = b.dataset.list;
+    const accId = b.dataset.toAcc || document.querySelector(`[data-sel-for="${itemId}"]`)?.value || DB.accounts[0]?.id;
+    if (accId) listItem(itemId, accId);
+  });
 }
 
 function addItem(e) {
   e.preventDefault();
-  const targetId = DB.activeId !== "all" ? DB.activeId : document.getElementById("f-acc")?.value;
-  const acc = DB.accounts.find(a => a.id === targetId);
-  if (!acc) { toast("Elige una cuenta primero"); return; }
   const stageBtn = document.querySelector("#stageToggle .stage-opt.on");
   const stage = stageBtn ? stageBtn.dataset.stage : 'house';
-  acc.items.unshift({
+  const item = {
     id: rid(),
     name: $("#f-name").value.trim(),
     brand: $("#f-brand").value.trim() || "—",
@@ -470,10 +493,53 @@ function addItem(e) {
     price: parseFloat($("#f-price").value) || 0,
     qty: Math.max(1, parseInt($("#f-qty").value) || 1),
     added: Date.now(), stage, sold: false, soldDate: null
-  });
-  save(); e.target.reset(); renderAll();
-  toast("Prenda añadida al pipeline");
+  };
+  if (stage === 'house') {
+    DB.house.unshift(item);
+    save(); e.target.reset(); document.getElementById("f-qty").value = "1"; renderAll();
+    toast("Prenda añadida a En casa");
+  } else {
+    const targetId = DB.activeId !== "all" ? DB.activeId : document.getElementById("f-acc")?.value;
+    const acc = DB.accounts.find(a => a.id === targetId);
+    if (!acc) { toast("Elige una cuenta para listar"); return; }
+    acc.items.unshift(item);
+    save(); e.target.reset(); document.getElementById("f-qty").value = "1"; renderAll();
+    toast(`Prenda añadida a Vinted (${esc(acc.name)})`);
+  }
 }
+function listItem(itemId, accId) {
+  const it = DB.house.find(x => x.id === itemId);
+  const acc = DB.accounts.find(a => a.id === accId);
+  if (!it || !acc) return;
+  DB.house = DB.house.filter(x => x.id !== itemId);
+  acc.items.unshift({ ...it, stage: 'listed', sold: false, soldDate: null });
+  save(); renderAll();
+  toast(`Listada en ${esc(acc.name)}`);
+}
+
+function returnToHouse(accId, itemId) {
+  const acc = DB.accounts.find(a => a.id === accId);
+  const it = acc && acc.items.find(x => x.id === itemId);
+  if (!it) return;
+  const snap = { ...it };
+  acc.items = acc.items.filter(x => x.id !== itemId);
+  DB.house.unshift({ ...it, stage: 'house', sold: false, soldDate: null });
+  save(); renderAll();
+  toastWithUndo('Movida a En casa', () => {
+    const a = DB.accounts.find(a => a.id === accId);
+    if (a) { DB.house = DB.house.filter(x => x.id !== itemId); a.items.unshift(snap); save(); renderAll(); }
+  });
+}
+
+function delHouseItem(id) {
+  const snap = DB.house.find(x => x.id === id);
+  if (!snap) return;
+  const copy = { ...snap };
+  DB.house = DB.house.filter(x => x.id !== id);
+  save(); renderAll();
+  toastWithUndo('Prenda eliminada', () => { DB.house.push(copy); save(); renderAll(); });
+}
+
 function sellOne(accId, itemId) {
   const acc = DB.accounts.find(a => a.id === accId);
   const it = acc && acc.items.find(x => x.id === itemId);
@@ -529,7 +595,8 @@ function renderAccounts() {
   const all = [];
   DB.accounts.forEach(a => a.items.forEach(it => all.push(it)));
   const totProfit = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.price - x.cost) * (x.qty || 1), 0);
-  const totStock = all.filter(x => x.stage !== 'sold').reduce((s, x) => s + (x.qty || 1), 0);
+  const houseUnits = DB.house.reduce((s, x) => s + (x.qty || 1), 0);
+  const totStock = all.filter(x => x.stage !== 'sold').reduce((s, x) => s + (x.qty || 1), 0) + houseUnits;
   const totSold = all.filter(x => x.stage === 'sold').reduce((s, x) => s + (x.qty || 1), 0);
   $("#acctAgg").innerHTML = `
     <div class="stat"><div class="top"><span class="lbl">Perfiles</span><span class="ic">${I.users}</span></div><div class="num neu">${DB.accounts.length}</div><div class="delta neu">cuentas conectadas</div></div>
@@ -688,7 +755,7 @@ function navigate(view) {
 }
 
 function renderBrandList() {
-  const set = new Set([...MARKET_BRANDS.map(b => b.name), ...DB.accounts.flatMap(a => a.items.map(i => i.brand).filter(b => b && b !== "—"))]);
+  const set = new Set([...MARKET_BRANDS.map(b => b.name), ...DB.accounts.flatMap(a => a.items.map(i => i.brand).filter(b => b && b !== "—")), ...DB.house.map(i => i.brand).filter(b => b && b !== "—")]);
   $("#brands").innerHTML = [...set].map(b => `<option value="${esc(b)}">`).join("") + "<option value=\"Otros\">";
 }
 
@@ -755,6 +822,8 @@ async function init() {
       if (!btn) return;
       stageToggle.querySelectorAll(".stage-opt").forEach(b => b.classList.remove("on"));
       btn.classList.add("on");
+      const accWrap = document.getElementById("f-acc-wrap");
+      if (accWrap) accWrap.style.display = (btn.dataset.stage === 'listed' && DB.activeId === 'all') ? "" : "none";
     });
   }
 
