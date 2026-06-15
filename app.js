@@ -317,7 +317,11 @@ async function loadRadarData() {
   const statusEl = document.getElementById("radarDataStatus");
   if (statusEl) statusEl.innerHTML = '<span class="pulse-dot"></span>Actualizando datos desde Vinted...';
   try {
-    const res = await fetch("/api/radar");
+    const { data: { session: radarSession } } = await supa.auth.getSession();
+    if (!radarSession) return;
+    const res = await fetch("/api/radar", {
+      headers: { Authorization: `Bearer ${radarSession.access_token}` }
+    });
     if (res.status === 401) {
       const d = await res.json().catch(() => ({}));
       if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · actualiza VINTED_TOKEN en Vercel';
@@ -806,9 +810,14 @@ async function saveVintedTokens(accessToken, refreshToken) {
   const statusEl = document.getElementById("tokenStatus");
   if (statusEl) statusEl.textContent = "Guardando...";
   try {
+    const { data: { session: saveSession } } = await supa.auth.getSession();
+    if (!saveSession) throw new Error("Sesión no activa");
     const res = await fetch("/api/save-tokens", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${saveSession.access_token}`
+      },
       body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken || null })
     });
     if (!res.ok) {

@@ -4,6 +4,8 @@
    Writes access_token + refresh_token to Vercel Blob.
    ============================================================ */
 
+const { verifyAuth, setCors } = require("./_lib/auth");
+
 function jwtExp(token) {
   try {
     const raw = token.split(".")[1];
@@ -13,15 +15,16 @@ function jwtExp(token) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  setCors(req, res, "POST");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
   const { access_token, refresh_token } = req.body ?? {};
-  if (!access_token) {
-    return res.status(400).json({ error: "access_token required" });
+  if (!access_token || !access_token.startsWith("eyJ")) {
+    return res.status(400).json({ error: "invalid access_token" });
   }
 
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;

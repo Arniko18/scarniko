@@ -1,9 +1,11 @@
 /* ============================================================
    SCARNIKO · VINTED MARKET RADAR
    Token storage: Vercel Blob (vinted-auth.json)
-   Flow: read blob → refresh if expired → write blob → query Vinted
+   Flow: auth check → read blob → refresh if expired → write blob → query Vinted
    Cache: 24h at the edge (s-maxage=86400)
    ============================================================ */
+
+const { verifyAuth, setCors } = require("./_lib/auth");
 
 const BRANDS = [
   "Zara", "Nike", "Carhartt", "Levi's", "Adidas", "Stradivarius",
@@ -84,8 +86,11 @@ async function refreshVintedToken(refreshToken) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
+  setCors(req, res, "GET");
+  if (req.method === "OPTIONS") return res.status(200).end();
+
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
 
   // --- Resolve token (blob → env var fallback → auto-bootstrap) ---
   let accessToken = null;
