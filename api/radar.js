@@ -59,6 +59,32 @@ async function writeTokensToBlob(accessToken, refreshToken) {
   } catch { /* non-fatal */ }
 }
 
+async function readHistory() {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) return [];
+  try {
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: "radar-history.json", token: blobToken });
+    if (!blobs.length) return [];
+    const res = await fetch(blobs[0].downloadUrl);
+    if (!res.ok) return [];
+    const d = await res.json();
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
+}
+
+async function writeHistory(snapshots) {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) return;
+  try {
+    const { put } = await import("@vercel/blob");
+    await put("radar-history.json", JSON.stringify(snapshots), {
+      access: "private", contentType: "application/json",
+      addRandomSuffix: false, token: blobToken, allowOverwrite: true
+    });
+  } catch { }
+}
+
 async function refreshVintedToken(refreshToken) {
   try {
     const r = await fetch("https://www.vinted.es/oauth/token", {
@@ -178,8 +204,26 @@ module.exports = async function handler(req, res) {
       return { name: r.name, demand, heat, entries: r.entries, avgFavs: Math.round(r.avgFavs * 10) / 10 };
     });
 
+    // ── History: compute real 7-day trends & save daily snapshot ──
+    const history = await readHistory();
+    const today = new Date().toISOString().split("T")[0];
+    const snap7 = history.length > 0 ? history[Math.max(0, history.length - 7)] : null;
+    if (snap7) {
+      brands.forEach(b => {
+        const prev = snap7.brands.find(s => s.name === b.name);
+        if (prev && prev.demand > 0) {
+          b.trend = Math.round(((b.demand - prev.demand) / prev.demand) * 100 * 10) / 10;
+        }
+      });
+    }
+    if (!history.some(s => s.date === today)) {
+      const updated = [...history, { date: today, brands: brands.map(b => ({ name: b.name, demand: b.demand })) }].slice(-30);
+      await writeHistory(updated);
+      history.push({ date: today, brands: brands.map(b => ({ name: b.name, demand: b.demand })) });
+    }
+
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=3600");
-    return res.json({ brands, updatedAt: new Date().toISOString(), source: "vinted_live" });
+    return res.json({ brands, history: history.slice(-14), updatedAt: new Date().toISOString(), source: "vinted_live" });
   } catch (e) {
     return res.status(500).json({ error: "internal", message: e.message });
   }

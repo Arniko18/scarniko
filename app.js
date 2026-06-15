@@ -318,6 +318,7 @@ function renderDashboard() {
 let radarStarted = false;
 let radarTries = 0;
 let radarLiveLoaded = false;
+let radarHistory = [];
 
 async function loadRadarData() {
   if (radarLiveLoaded) return;
@@ -344,12 +345,14 @@ async function loadRadarData() {
       if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
       return;
     }
-    // Merge live demand into MARKET_BRANDS (keep static heat/trend/note)
+    // Merge live demand + real trends + history into MARKET_BRANDS
+    if (Array.isArray(data.history)) radarHistory = data.history;
     data.brands.forEach(live => {
       const b = MARKET_BRANDS.find(m => m.name === live.name);
       if (b) {
         b.demand = live.demand;
         b.heat = live.heat;
+        if (live.trend !== undefined) b.trend = live.trend;
       }
     });
     radarLiveLoaded = true;
@@ -387,6 +390,13 @@ function startRadar() {
   if (skeleton) skeleton.style.display = "none";
   loadRadarData();
 }
+function brandSpark(name) {
+  if (radarHistory.length < 2) return "";
+  const series = radarHistory.map(s => (s.brands.find(b => b.name === name) || {}).demand || 0).slice(-7);
+  if (series.filter(v => v > 0).length < 2) return "";
+  return sparkline(series, { w: 52, h: 24, color: "var(--primary)", fill: false });
+}
+
 function renderRadarSide() {
   if (!radarLiveLoaded) {
     const skRow = (i) => `<div class="rank-item">
@@ -413,6 +423,7 @@ function renderRadarSide() {
       <div class="rk">${i + 1}</div>
       <div class="info"><b>${esc(b.name)}</b><span>${esc(b.note)}</span></div>
       <span class="heat-tag ${hcls}">${htxt}</span>
+      <div class="mini-spark">${brandSpark(b.name)}</div>
       <div class="tr ${up ? "up" : "down"}" style="width:54px">${up ? "+" : ""}${b.trend.toFixed(1)}%</div>
     </div>`;
   }).join("");
@@ -828,7 +839,7 @@ function setTheme(mode) {
 }
 
 function navigate(view) {
-  $$(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.view === view));
+  $$(".nav-item, .mob-nav-item").forEach(n => n.classList.toggle("active", n.dataset.view === view));
   $$(".view").forEach(v => v.classList.toggle("active", v.id === view));
   $(".scroll").scrollTop = 0;
   if (view === "radar") { setTimeout(startRadar, 60); }
@@ -891,8 +902,8 @@ async function init() {
   await load();
   setTheme(DB.theme || "dark");
 
-  // nav
-  $$(".nav-item").forEach(n => n.onclick = () => navigate(n.dataset.view));
+  // nav (sidebar + mobile bottom nav)
+  $$(".nav-item, .mob-nav-item").forEach(n => n.onclick = () => navigate(n.dataset.view));
 
   // theme toggle
   $("#thDark").onclick = () => setTheme("dark");

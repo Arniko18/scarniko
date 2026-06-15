@@ -4,8 +4,9 @@
   "description": "Centro de Reventa Vinted — gestión de stock, radar de mercado y optimizador de anuncios",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#16201f",
-  "theme_color": "#3ad6c8",
+  "background_color": "#0f0d0b",
+  "theme_color": "#a84930",
+  "orientation": "portrait-primary",
   "lang": "es",
   "icons": [
     {
