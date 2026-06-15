@@ -802,29 +802,28 @@ function navigate(view) {
 /* ============================================================
    VINTED TOKEN MANAGEMENT
    ============================================================ */
-function jwtExpFrontend(tok) {
-  try {
-    return JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp || 0;
-  } catch { return 0; }
-}
-
 async function saveVintedTokens(accessToken, refreshToken) {
+  const statusEl = document.getElementById("tokenStatus");
+  if (statusEl) statusEl.textContent = "Guardando...";
   try {
-    const { error } = await supa.from("vinted_auth").upsert(
-      { id: 1, access_token: accessToken, refresh_token: refreshToken || null,
-        expires_at: jwtExpFrontend(accessToken), updated_at: new Date().toISOString() },
-      { onConflict: "id" }
-    );
-    if (error) throw error;
+    const res = await fetch("/api/save-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken || null })
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || "Error " + res.status);
+    }
     radarLiveLoaded = false;
     document.getElementById("t-access").value = "";
     document.getElementById("t-refresh").value = "";
-    document.getElementById("tokenStatus").textContent = "Guardado · actualizando radar...";
+    if (statusEl) statusEl.textContent = "Guardado · actualizando radar...";
     toast("Token guardado");
     await loadRadarData();
-    document.getElementById("tokenStatus").textContent = "Token activo · el radar usa datos en tiempo real";
+    if (statusEl) statusEl.textContent = "Token activo · el radar usa datos en tiempo real";
   } catch (e) {
-    document.getElementById("tokenStatus").textContent = "Error: " + e.message;
+    if (statusEl) statusEl.textContent = "Error: " + e.message;
     toast("Error guardando token");
   }
 }

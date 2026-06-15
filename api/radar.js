@@ -1,10 +1,7 @@
 /* ============================================================
    SCARNIKO · VINTED MARKET RADAR
-   Token flow:
-     1. Read from Supabase vinted_auth (persisted, survives deploys)
-     2. If expired → try Vinted /api/v2/tokens refresh endpoint
-     3. If refresh ok → write new tokens back to Supabase
-     4. Fall back to VINTED_TOKEN env var as last resort
+   Token storage: Vercel Blob (vinted-auth.json)
+   Flow: read blob → refresh if expired → write blob → query Vinted
    Cache: 24h at the edge (s-maxage=86400)
    ============================================================ */
 
@@ -15,10 +12,6 @@ const BRANDS = [
   "Jordan", "Mango", "Salomon", "Vans", "Petit Bateau", "Desigual", "Tommy Hilfiger"
 ];
 
-const SUPA_URL = process.env.SUPABASE_URL;
-const SUPA_ANON = process.env.SUPABASE_ANON_KEY;
-const SUPA_SVC = process.env.SUPABASE_SERVICE_KEY;
-
 function jwtExp(token) {
   try {
     const raw = token.split(".")[1];
@@ -28,38 +21,40 @@ function jwtExp(token) {
 }
 
 function isExpired(token) {
-  return jwtExp(token) < Date.now() / 1000 + 60; // 60s grace
+  return jwtExp(token) < Date.now() / 1000 + 60;
 }
 
-async function readAuthFromSupabase() {
-  if (!SUPA_URL || !SUPA_ANON) return null;
+async function readTokensFromBlob() {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) return null;
   try {
-    const r = await fetch(
-      `${SUPA_URL}/rest/v1/vinted_auth?id=eq.1&select=access_token,refresh_token,expires_at`,
-      { headers: { apikey: SUPA_ANON, Authorization: `Bearer ${SUPA_ANON}` } }
-    );
-    if (!r.ok) return null;
-    const rows = await r.json();
-    return rows[0] ?? null;
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: "vinted-auth.json", token: blobToken });
+    if (!blobs.length) return null;
+    const res = await fetch(blobs[0].downloadUrl);
+    if (!res.ok) return null;
+    return await res.json();
   } catch { return null; }
 }
 
-async function writeAuthToSupabase(access_token, refresh_token) {
-  if (!SUPA_URL || !SUPA_SVC) return;
-  const exp = jwtExp(access_token);
-  const body = JSON.stringify({
-    id: 1, access_token, refresh_token,
-    expires_at: exp, updated_at: new Date().toISOString()
-  });
-  await fetch(`${SUPA_URL}/rest/v1/vinted_auth`, {
-    method: "POST",
-    headers: {
-      apikey: SUPA_SVC, Authorization: `Bearer ${SUPA_SVC}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=minimal"
-    },
-    body
-  }).catch(() => {});
+async function writeTokensToBlob(accessToken, refreshToken) {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) return;
+  try {
+    const { put } = await import("@vercel/blob");
+    await put("vinted-auth.json", JSON.stringify({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: jwtExp(accessToken),
+      updated_at: new Date().toISOString()
+    }), {
+      access: "private",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      token: blobToken,
+      allowOverwrite: true
+    });
+  } catch { /* non-fatal */ }
 }
 
 async function refreshVintedToken(refreshToken) {
@@ -92,23 +87,26 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET");
 
-  // --- Resolve token ---
+  // --- Resolve token (blob → env var fallback → auto-bootstrap) ---
   let accessToken = null;
   let refreshToken = null;
 
-  const stored = await readAuthFromSupabase();
+  const stored = await readTokensFromBlob();
   if (stored?.access_token) {
     accessToken = stored.access_token;
     refreshToken = stored.refresh_token;
-  }
-  // Fall back to env var if Supabase empty
-  if (!accessToken) {
+  } else {
+    // Bootstrap: first-time setup from env vars — write them to blob so future calls use blob
     accessToken = process.env.VINTED_TOKEN ?? null;
+    refreshToken = process.env.VINTED_REFRESH_TOKEN ?? null;
+    if (accessToken && refreshToken) {
+      await writeTokensToBlob(accessToken, refreshToken);
+    }
   }
 
   if (!accessToken) {
     res.setHeader("Cache-Control", "no-store");
-    return res.status(500).json({ error: "no_token", message: "No Vinted token found — configure in Scarniko settings" });
+    return res.status(500).json({ error: "no_token", message: "No Vinted token — configure in Scarniko settings" });
   }
 
   // --- Auto-refresh if expired ---
@@ -118,13 +116,12 @@ module.exports = async function handler(req, res) {
       if (refreshed) {
         accessToken = refreshed.access_token;
         const newRefresh = refreshed.refresh_token ?? refreshToken;
-        await writeAuthToSupabase(accessToken, newRefresh);
+        await writeTokensToBlob(accessToken, newRefresh);
       } else {
-        // Refresh failed (DataDome or network)
         res.setHeader("Cache-Control", "no-store");
         return res.status(401).json({
           error: "token_expired",
-          message: "Token caducado y el refresh automático falló — actualiza el token en Scarniko"
+          message: "Token caducado — actualiza el token en Scarniko"
         });
       }
     } else {
@@ -136,7 +133,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // --- Fetch brand data from Vinted ---
+  // --- Fetch brand data ---
   const vHeaders = {
     Authorization: `Bearer ${accessToken}`,
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
@@ -155,8 +152,7 @@ module.exports = async function handler(req, res) {
       const entries = d.pagination?.total_entries ?? 0;
       const items = Array.isArray(d.items) ? d.items : [];
       const avgFavs = items.length > 0
-        ? items.reduce((s, i) => s + (i.favourite_count || 0), 0) / items.length
-        : 0;
+        ? items.reduce((s, i) => s + (i.favourite_count || 0), 0) / items.length : 0;
       return { name, entries, avgFavs };
     } catch (e) {
       return { name, entries: 0, avgFavs: 0, fetchError: e.message };
@@ -165,7 +161,6 @@ module.exports = async function handler(req, res) {
 
   try {
     const results = await Promise.all(BRANDS.map(fetchBrand));
-
     const maxEntries = Math.max(...results.map((r) => r.entries), 1);
     const maxFavs = Math.max(...results.map((r) => r.avgFavs), 1);
 
