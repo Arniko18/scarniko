@@ -64,7 +64,7 @@ async function writeAuthToSupabase(access_token, refresh_token) {
 
 async function refreshVintedToken(refreshToken) {
   try {
-    const r = await fetch("https://www.vinted.es/api/v2/tokens", {
+    const r = await fetch("https://www.vinted.es/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -74,7 +74,12 @@ async function refreshVintedToken(refreshToken) {
         Origin: "https://www.vinted.es",
         Referer: "https://www.vinted.es/"
       },
-      body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken }),
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: "web",
+        scope: "user"
+      }),
       signal: AbortSignal.timeout(10000)
     });
     if (!r.ok) return null;
