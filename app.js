@@ -353,8 +353,16 @@ async function loadRadarData() {
       }
     });
     radarLiveLoaded = true;
+    const rankEl = document.getElementById("radarRank");
+    const catsEl = document.getElementById("radarCats");
+    if (rankEl) rankEl.style.opacity = "0";
+    if (catsEl) catsEl.style.opacity = "0";
     renderRadarSide();
     renderTicker();
+    requestAnimationFrame(() => {
+      if (rankEl) rankEl.style.opacity = "";
+      if (catsEl) catsEl.style.opacity = "";
+    });
     if (radarStarted) Radar.update(MARKET_BRANDS);
     const ts = new Date(data.updatedAt);
     const mins = Math.round((Date.now() - ts.getTime()) / 60000);
@@ -380,6 +388,22 @@ function startRadar() {
   loadRadarData();
 }
 function renderRadarSide() {
+  if (!radarLiveLoaded) {
+    const skRow = (i) => `<div class="rank-item">
+      <div class="rk">${i + 1}</div>
+      <div class="info"><b class="skel-line" style="width:${58 + (i % 3) * 18}px;height:13px;display:block"></b><span class="skel-line" style="width:${90 + (i % 4) * 14}px;height:11px;display:block;margin-top:5px"></span></div>
+      <span class="skel-line" style="width:44px;height:22px;border-radius:6px;display:block"></span>
+      <span class="skel-line" style="width:36px;height:12px;display:block"></span>
+    </div>`;
+    const skBar = () => `<div class="bar-row">
+      <div class="bl"><span class="skel-line" style="width:68px;height:12px;display:block"></span></div>
+      <div class="bar-track"><div class="bar-fill" style="transform:scaleX(0.25);background:var(--surface-2)"></div></div>
+      <div class="bt"><span class="skel-line" style="width:30px;height:12px;display:block"></span></div>
+    </div>`;
+    $("#radarRank").innerHTML = Array.from({ length: 8 }, (_, i) => skRow(i)).join("");
+    $("#radarCats").innerHTML = Array.from({ length: 5 }, skBar).join("");
+    return;
+  }
   const ranked = [...MARKET_BRANDS].sort((a, b) => b.demand - a.demand).slice(0, 12);
   $("#radarRank").innerHTML = ranked.map((b, i) => {
     const up = b.trend >= 0;
@@ -990,5 +1014,6 @@ async function init() {
   renderOptimizerStatic();
   renderCalendar();
   renderAll();
+  loadRadarData(); // preload in background so radar view shows live data immediately
 }
 document.addEventListener("DOMContentLoaded", init);
