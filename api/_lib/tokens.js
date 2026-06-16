@@ -90,7 +90,6 @@ async function writeTokensToBlob(accessToken, refreshToken) {
   }));
   const { put } = await import("@vercel/blob");
   await put("vinted-auth.json", payload, {
-    access: "private",
     contentType: "application/octet-stream",
     addRandomSuffix: false,
     token: bt,
@@ -174,7 +173,7 @@ async function writeHistory(snapshots) {
   try {
     const { put } = await import("@vercel/blob");
     await put("radar-history.json", JSON.stringify(snapshots), {
-      access: "private", contentType: "application/json",
+      contentType: "application/json",
       addRandomSuffix: false, token: bt, allowOverwrite: true
     });
   } catch { }
