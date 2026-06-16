@@ -1,39 +1,12 @@
 /* ============================================================
    SCARNIKO · SAVE VINTED TOKENS
-   Accepts either { access_token, refresh_token } or just
-   { refresh_token } — in the latter case it calls Vinted OAuth
-   to derive a fresh access_token automatically.
+   Accepts { refresh_token } or { access_token, refresh_token }.
+   When only refresh_token provided, derives access_token via
+   Vinted OAuth automatically.
    ============================================================ */
 
-const { verifyAuth, setCors } = require("./_lib/auth");
-
-function jwtExp(token) {
-  try {
-    const raw = token.split(".")[1];
-    const padded = raw + "=".repeat((4 - (raw.length % 4)) % 4);
-    return JSON.parse(Buffer.from(padded, "base64").toString("utf8")).exp ?? 0;
-  } catch { return 0; }
-}
-
-async function exchangeRefreshToken(refreshToken) {
-  const r = await fetch("https://www.vinted.es/oauth/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-      Accept: "application/json",
-      "Accept-Language": "es-ES,es;q=0.9",
-      Origin: "https://www.vinted.es",
-      Referer: "https://www.vinted.es/"
-    },
-    body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: "web", scope: "user" }),
-    signal: AbortSignal.timeout(12000)
-  });
-  if (!r.ok) throw new Error(`Vinted OAuth ${r.status}`);
-  const d = await r.json();
-  if (!d.access_token) throw new Error("No access_token in Vinted response");
-  return d;
-}
+const { verifyAuth, setCors, rateLimit, rlKey } = require("./_lib/auth");
+const { isValidJWT, writeTokensToBlob, refreshVintedToken, jwtExp } = require("./_lib/tokens");
 
 module.exports = async function handler(req, res) {
   setCors(req, res, "POST");
@@ -43,44 +16,38 @@ module.exports = async function handler(req, res) {
   const user = await verifyAuth(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
 
-  let { access_token, refresh_token } = req.body ?? {};
+  // Rate limit: 10 saves per 10 minutes per user
+  if (!rateLimit(rlKey(req, user, "save:"), { max: 10, windowMs: 600_000 })) {
+    return res.status(429).json({ error: "too_many_requests" });
+  }
 
-  // If only refresh_token provided, derive access_token via Vinted OAuth
-  if (!access_token && refresh_token?.startsWith("eyJ")) {
+  // ── Input validation ────────────────────────────────────────
+  const body = req.body ?? {};
+  let access_token  = typeof body.access_token  === "string" ? body.access_token.trim()  : null;
+  let refresh_token = typeof body.refresh_token === "string" ? body.refresh_token.trim() : null;
+
+  if (access_token  && !isValidJWT(access_token))  return res.status(400).json({ error: "invalid_access_token" });
+  if (refresh_token && !isValidJWT(refresh_token)) return res.status(400).json({ error: "invalid_refresh_token" });
+  if (!access_token && !refresh_token)              return res.status(400).json({ error: "provide access_token or refresh_token" });
+
+  // ── If only refresh_token: derive access_token via Vinted OAuth ──
+  const derived = !access_token;
+  if (derived) {
     try {
-      const tokens = await exchangeRefreshToken(refresh_token);
-      access_token = tokens.access_token;
-      // Use the rotated refresh_token Vinted returns (may differ from input)
+      const tokens = await refreshVintedToken(refresh_token);
+      if (!tokens?.access_token) throw new Error("No access_token in Vinted response");
+      access_token  = tokens.access_token;
       refresh_token = tokens.refresh_token || refresh_token;
     } catch (e) {
       return res.status(400).json({ error: "refresh_exchange_failed", detail: e.message });
     }
   }
 
-  if (!access_token?.startsWith("eyJ")) {
-    return res.status(400).json({ error: "invalid_token — provide access_token or a valid refresh_token" });
-  }
+  if (!isValidJWT(access_token)) return res.status(400).json({ error: "invalid_access_token_from_vinted" });
 
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!blobToken) return res.status(500).json({ error: "BLOB_READ_WRITE_TOKEN not set" });
+  // ── Persist (encrypted) ──────────────────────────────────────
+  const ok = await writeTokensToBlob(access_token, refresh_token);
+  if (!ok) return res.status(500).json({ error: "blob_write_failed" });
 
-  try {
-    const { put } = await import("@vercel/blob");
-    await put("vinted-auth.json", JSON.stringify({
-      access_token,
-      refresh_token: refresh_token || null,
-      expires_at: jwtExp(access_token),
-      updated_at: new Date().toISOString()
-    }), {
-      access: "public",
-      contentType: "application/json",
-      addRandomSuffix: false,
-      token: blobToken,
-      allowOverwrite: true
-    });
-
-    return res.json({ ok: true, derived: !req.body?.access_token });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+  return res.json({ ok: true, derived, expires_at: new Date(jwtExp(access_token) * 1000).toISOString() });
 };

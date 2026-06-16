@@ -1,66 +1,19 @@
 /* ============================================================
    SCARNIKO · VINTED CALENDAR — Real-time activity heatmap
-   Fetches ~240 recent listings across categories, extracts
-   timestamps, and maps platform activity to a 7-day × 17-hour
-   grid (Spain timezone). Blends with algorithmic baseline when
-   sample is small.
-   Cache: 6h at the edge (s-maxage=21600)
+   Cache: 5min at the edge (s-maxage=300) while diagnosing
    ============================================================ */
 
-const { verifyAuth, setCors } = require("./_lib/auth");
+const { verifyAuth, setCors, rateLimit, rlKey } = require("./_lib/auth");
+const { resolveVintedTokens } = require("./_lib/tokens");
 
-// Four parallel queries → wide time window, diverse items
 const QUERIES = [
-  { q: "",          per: 96 },   // general catalog — broadest signal
-  { q: "Nike",      per: 48 },   // sneakers
-  { q: "Zara",      per: 48 },   // fast fashion
-  { q: "Carhartt",  per: 48 },   // streetwear
+  { q: "",         per: 96 },
+  { q: "Nike",     per: 48 },
+  { q: "Zara",     per: 48 },
+  { q: "Carhartt", per: 48 },
 ];
 
-// ── JWT / token helpers ──────────────────────────────────────
-function jwtExp(token) {
-  try {
-    const raw = token.split(".")[1];
-    const p = raw + "=".repeat((4 - raw.length % 4) % 4);
-    return JSON.parse(Buffer.from(p, "base64").toString("utf8")).exp ?? 0;
-  } catch { return 0; }
-}
-function isExpired(t) { return jwtExp(t) < Date.now() / 1000 + 60; }
-
-async function readTokensFromBlob() {
-  const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) return null;
-  try {
-    const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "vinted-auth.json", token: bt });
-    if (!blobs.length) return null;
-    const r = await fetch(blobs[0].downloadUrl);
-    return r.ok ? r.json() : null;
-  } catch { return null; }
-}
-
-async function refreshVintedToken(refreshToken) {
-  try {
-    const r = await fetch("https://www.vinted.es/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-        Accept: "application/json",
-        "Accept-Language": "es-ES,es;q=0.9",
-        Origin: "https://www.vinted.es",
-        Referer: "https://www.vinted.es/"
-      },
-      body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: "web", scope: "user" }),
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d.access_token ? d : null;
-  } catch { return null; }
-}
-
-// ── Fetch items from Vinted ──────────────────────────────────
+// ── Fetch items ───────────────────────────────────────────────
 async function fetchItems(query, perPage, vHeaders) {
   try {
     const url = query
@@ -73,35 +26,29 @@ async function fetchItems(query, perPage, vHeaders) {
   } catch { return []; }
 }
 
-// ── Spain local hour from Unix timestamp (CET/CEST) ──────────
+// ── Spain timezone (CET/CEST) ─────────────────────────────────
 function spainTime(ts) {
   const d = new Date(ts * 1000);
   const yr = d.getUTCFullYear();
-  // Last Sunday of March (CET→CEST) and October (CEST→CET)
   function lastSunday(yr, mo) {
-    const last = new Date(Date.UTC(yr, mo + 1, 0)); // last day of month
-    last.setUTCDate(last.getUTCDate() - last.getUTCDay()); // back to Sunday
+    const last = new Date(Date.UTC(yr, mo + 1, 0));
+    last.setUTCDate(last.getUTCDate() - last.getUTCDay());
     return last.getTime() / 1000;
   }
-  const summerStart = lastSunday(yr, 2); // last Sun March
-  const summerEnd   = lastSunday(yr, 9); // last Sun October
+  const summerStart = lastSunday(yr, 2);
+  const summerEnd   = lastSunday(yr, 9);
   const offset = (ts >= summerStart && ts < summerEnd) ? 2 : 1;
   const localH = (d.getUTCHours() + offset) % 24;
-  const utcDay = d.getUTCDay(); // 0=Sun
-  const day = utcDay === 0 ? 6 : utcDay - 1; // 0=Mon … 6=Sun
-  return { hour: localH, day };
+  const utcDay = d.getUTCDay();
+  return { hour: localH, day: utcDay === 0 ? 6 : utcDay - 1 };
 }
 
-// ── Normalise a raw timestamp value to Unix seconds ──────────
-// Vinted may return seconds (10-digit) or milliseconds (13-digit)
+// ── Timestamp extraction ──────────────────────────────────────
 function toUnixSec(v) {
   if (!v || typeof v !== "number" || v <= 0) return null;
-  return v > 1e12 ? Math.floor(v / 1000) : v; // ms → s if 13+ digits
+  return v > 1e12 ? Math.floor(v / 1000) : v;
 }
-
-// ── Extract best timestamp from a Vinted item ────────────────
 function itemTs(it) {
-  // Try all known Vinted timestamp fields
   return (
     toUnixSec(it.created_at_ts) ??
     toUnixSec(it.updated_at_ts) ??
@@ -114,37 +61,31 @@ function itemTs(it) {
   );
 }
 
-// ── Build 7×17 heatmap from item list ───────────────────────
+// ── Heatmap builder ───────────────────────────────────────────
 function buildLiveMatrix(items) {
   const HOUR_START = 7, HOURS = 17, DAYS = 7;
   const raw = Array.from({ length: DAYS }, () => Array(HOURS).fill(0));
   const now = Date.now() / 1000;
   let valid = 0;
-
-  // Diagnostic: capture what fields the first item has
-  const firstItemKeys = items[0] ? Object.keys(items[0]).filter(k =>
-    k.includes("at") || k.includes("ts") || k.includes("time") || k.includes("date")
-  ) : [];
-
+  const diagnosticFields = items[0]
+    ? Object.keys(items[0]).filter(k => /at|ts|time|date/i.test(k))
+    : [];
   for (const it of items) {
     const ts = itemTs(it);
     if (!ts || ts > now + 120 || ts < now - 14 * 86400) continue;
-
     const { hour, day } = spainTime(ts);
     if (hour < HOUR_START || hour >= HOUR_START + HOURS) continue;
     raw[day][hour - HOUR_START]++;
     valid++;
   }
-
   const maxV = Math.max(1, ...raw.flat());
   return {
     matrix: raw.map(row => row.map(v => Math.round((v / maxV) * 100))),
     sampleSize: valid,
-    diagnosticFields: firstItemKeys
+    diagnosticFields
   };
 }
 
-// ── Algorithmic baseline (mirrors data.js buildHeatMatrix) ───
 function buildAlgoMatrix() {
   const m = [];
   for (let d = 0; d < 7; d++) {
@@ -172,7 +113,7 @@ function blend(live, algo, w) {
   return live.map((row, d) => row.map((v, h) => Math.round(v * w + algo[d][h] * (1 - w))));
 }
 
-// ── Handler ──────────────────────────────────────────────────
+// ── Handler ───────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   setCors(req, res, "GET");
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -180,33 +121,19 @@ module.exports = async function handler(req, res) {
   const user = await verifyAuth(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
 
-  // Resolve token
-  let accessToken = null, refreshToken = null;
-  const stored = await readTokensFromBlob();
-  if (stored?.access_token) {
-    accessToken = stored.access_token;
-    refreshToken = stored.refresh_token;
-  } else {
-    accessToken = process.env.VINTED_TOKEN ?? null;
-    refreshToken = process.env.VINTED_REFRESH_TOKEN ?? null;
+  // Rate limit: 30 per minute per user
+  if (!rateLimit(rlKey(req, user, "cal:"), { max: 30, windowMs: 60_000 })) {
+    return res.status(429).json({ error: "too_many_requests" });
   }
 
-  if (!accessToken) {
+  const tokens = await resolveVintedTokens();
+  if (!tokens) {
     res.setHeader("Cache-Control", "no-store");
-    return res.status(500).json({ error: "no_token" });
-  }
-
-  if (isExpired(accessToken) && refreshToken) {
-    const refreshed = await refreshVintedToken(refreshToken);
-    if (refreshed) accessToken = refreshed.access_token;
-    else {
-      res.setHeader("Cache-Control", "no-store");
-      return res.status(401).json({ error: "token_expired" });
-    }
+    return res.status(401).json({ error: "token_expired" });
   }
 
   const vHeaders = {
-    Authorization: `Bearer ${accessToken}`,
+    Authorization: `Bearer ${tokens.accessToken}`,
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
     Accept: "application/json, text/plain, */*",
     "Accept-Language": "es-ES,es;q=0.9",
@@ -215,19 +142,13 @@ module.exports = async function handler(req, res) {
   };
 
   try {
-    const results = await Promise.all(
-      QUERIES.map(({ q, per }) => fetchItems(q, per, vHeaders))
-    );
+    const results = await Promise.all(QUERIES.map(({ q, per }) => fetchItems(q, per, vHeaders)));
     const allItems = results.flat();
-
     const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
     const algoMatrix = buildAlgoMatrix();
-
-    // Blend weight: 70% live when ≥50 samples, 40% at 20-49, pure algo below 20
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
     const finalMatrix = liveWeight > 0 ? blend(liveMatrix, algoMatrix, liveWeight) : algoMatrix;
 
-    // Short cache while debugging; revert to 21600 once confirmed working
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=60");
     return res.json({
       matrix: finalMatrix,
