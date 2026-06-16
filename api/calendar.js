@@ -45,20 +45,28 @@ function spainTime(ts) {
 
 // ── Timestamp extraction ──────────────────────────────────────
 function toUnixSec(v) {
-  if (!v || typeof v !== "number" || v <= 0) return null;
-  return v > 1e12 ? Math.floor(v / 1000) : v;
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  if (!n || typeof n !== "number" || !isFinite(n) || n <= 0) return null;
+  return n > 1e12 ? Math.floor(n / 1000) : Math.floor(n);
+}
+function strTs(s) {
+  if (!s || typeof s !== "string") return null;
+  const t = Math.floor(new Date(s).getTime() / 1000);
+  return t > 0 ? t : null;
 }
 function itemTs(it) {
-  return (
-    toUnixSec(it.created_at_ts) ??
-    toUnixSec(it.updated_at_ts) ??
-    toUnixSec(it.bumped_at_ts) ??
-    (typeof it.created_at === "number" ? toUnixSec(it.created_at) : null) ??
-    (it.created_at ? Math.floor(new Date(it.created_at).getTime() / 1000) : null) ??
-    (it.updated_at ? Math.floor(new Date(it.updated_at).getTime() / 1000) : null) ??
-    toUnixSec(it.photo?.timestamp) ??
-    null
-  );
+  // Take the MOST RECENT valid timestamp — bumped/updated beats created
+  const candidates = [
+    toUnixSec(it.bumped_at_ts),
+    toUnixSec(it.updated_at_ts),
+    toUnixSec(it.created_at_ts),
+    toUnixSec(it.created_at),
+    strTs(it.bumped_at),
+    strTs(it.updated_at),
+    strTs(it.created_at),
+    toUnixSec(it.photo?.timestamp),
+  ].filter(t => t && t > 0);
+  return candidates.length ? Math.max(...candidates) : null;
 }
 
 // ── Heatmap builder ───────────────────────────────────────────
@@ -72,11 +80,11 @@ function buildLiveMatrix(items) {
     : [];
   for (const it of items) {
     const ts = itemTs(it);
-    if (!ts || ts > now + 120 || ts < now - 14 * 86400) continue;
+    if (!ts || ts > now + 120 || ts < now - 30 * 86400) continue;
+    valid++;
     const { hour, day } = spainTime(ts);
     if (hour < HOUR_START || hour >= HOUR_START + HOURS) continue;
     raw[day][hour - HOUR_START]++;
-    valid++;
   }
   const maxV = Math.max(1, ...raw.flat());
   return {
@@ -144,7 +152,6 @@ module.exports = async function handler(req, res) {
   try {
     const results = await Promise.all(QUERIES.map(({ q, per }) => fetchItems(q, per, vHeaders)));
     const allItems = results.flat();
-    console.log("[cal-diag]", JSON.stringify({ n: allItems.length, tsFields: Object.keys(allItems[0]||{}).filter(k => /at|ts|time|date/i.test(k)), v: { cat_ts: allItems[0]?.created_at_ts, cat: allItems[0]?.created_at, uat_ts: allItems[0]?.updated_at_ts, uat: allItems[0]?.updated_at } }));
     const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
     const algoMatrix = buildAlgoMatrix();
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
