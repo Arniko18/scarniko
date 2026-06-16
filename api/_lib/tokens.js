@@ -65,11 +65,10 @@ function decrypt(data) {
 
 // ── Blob: read tokens ────────────────────────────────────────
 async function readTokensFromBlob() {
-  const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) return null;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
     const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "vinted-auth.json", token: bt });
+    const { blobs } = await list({ prefix: "vinted-auth.json" });
     if (!blobs.length) return null;
     const res = await fetch(blobs[0].downloadUrl);
     if (!res.ok) return null;
@@ -80,23 +79,19 @@ async function readTokensFromBlob() {
 
 // ── Blob: write tokens (encrypted) ───────────────────────────
 async function writeTokensToBlob(accessToken, refreshToken) {
-  const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) throw new Error("BLOB_READ_WRITE_TOKEN not set");
+  if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("BLOB_READ_WRITE_TOKEN not set");
   const payload = encrypt(JSON.stringify({
     access_token:  accessToken,
     refresh_token: refreshToken || null,
     expires_at:    jwtExp(accessToken),
     updated_at:    new Date().toISOString()
   }));
-  const { put, list, del } = await import("@vercel/blob");
-  // Delete first to avoid access-mode conflicts on overwrite
-  const { blobs } = await list({ prefix: "vinted-auth.json", token: bt });
-  if (blobs.length) await del(blobs.map(b => b.url), { token: bt });
+  const { put } = await import("@vercel/blob");
+  // No explicit token/access — SDK auto-detects both from BLOB_READ_WRITE_TOKEN env var
   await put("vinted-auth.json", payload, {
-    access: "public",
     contentType: "application/octet-stream",
     addRandomSuffix: false,
-    token: bt,
+    allowOverwrite: true,
   });
   return true;
 }
@@ -157,11 +152,10 @@ async function resolveVintedTokens() {
 
 // ── Blob: radar history (unencrypted — not sensitive) ────────
 async function readHistory() {
-  const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) return [];
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
     const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "radar-history.json", token: bt });
+    const { blobs } = await list({ prefix: "radar-history.json" });
     if (!blobs.length) return [];
     const res = await fetch(blobs[0].downloadUrl);
     if (!res.ok) return [];
@@ -171,14 +165,13 @@ async function readHistory() {
 }
 
 async function writeHistory(snapshots) {
-  const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) return;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const { put } = await import("@vercel/blob");
     await put("radar-history.json", JSON.stringify(snapshots), {
-      access: "public",
       contentType: "application/json",
-      addRandomSuffix: false, token: bt, allowOverwrite: true
+      addRandomSuffix: false,
+      allowOverwrite: true,
     });
   } catch { }
 }
