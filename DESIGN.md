@@ -102,7 +102,30 @@ Espaciado de la grilla del scroll: `26px` de padding lateral en desktop, `14px` 
 .rank-list      — lista de marcas/cuentas con rank badge + sparkline
 .rank-item      — fila individual con .top3 highlight
 .bar-row        — barra de progreso horizontal con animación scaleX
-.heat-grid      — heatmap 17×N para el calendario
+```
+
+### Calendario V2 — Timing Command Center
+```
+.cal-hero            — card 3-col: demanda ahora · veredicto · mejor hora hoy
+.cal-hero-side       — panel lateral (left = now con track bar, right = peak align-right)
+.cal-verdict         — panel central con badge + headline + sub; bordes laterales
+.cal-verdict-badge   — pill veredicto: .cv-now (terracota+glow) / .cv-good / .cv-soon / .cv-wait
+.cal-curve-wrap      — contenedor del SVG de demanda diaria
+.cal-curve-svg       — SVG animado: área gradient + línea catmull-rom + marcador hora + pico
+.cal-week            — grid 7 cols, un tile por día de la semana
+.cal-day             — tile con nombre + mini barras + hora pico; .today con borde primario
+.cal-day-seg         — segmento mini-barra; .hot = bloque con el pico (terracota)
+.slot-v2             — fila de franja: rank numérico + info + horario (reemplaza .slot/.st-*)
+```
+
+Clases SVG (inline):
+```
+.cal-axis-line   — líneas de grid horizontales en 25/50/75
+.cal-axis-text   — etiquetas hora en eje X (JetBrains Mono)
+.cal-area        — área rellena con gradiente vertical (terracota → transparente)
+.cal-line        — línea suave catmull-rom sobre el área
+.cal-now-vline   — línea punteada vertical en hora actual + label "AHORA"
+.cal-peak-dot    — punto terracota sobre el máximo + etiqueta de hora
 ```
 
 ### Forms
@@ -131,6 +154,12 @@ Espaciado de la grilla del scroll: `26px` de padding lateral en desktop, `14px` 
 - Pulse dot (live): `pulse` — glow ring expand, 2s infinite
 - Menús / dropdowns: opacity + translateY(-6px) + scale(0.98), 0.18s
 - Tema toggle: `background-color/color` 0.45s ease
+- **Curva del calendario**: secuencia encadenada:
+  - `.cal-now-vline`: `calFadeIn` 0.4s delay 0.1s
+  - `.cal-line` (SVG path): `stroke-dashoffset` len→0 vía JS `getTotalLength()`, 1.6s cubic-bezier(0.22,1,0.36,1) delay 0.05s
+  - `.cal-area`: `calFadeIn` 0.9s delay 0.6s
+  - `.cal-peak-dot` + `.cal-peak-txt`: `calFadeIn` 0.5s delay 1.4s
+- **Barra hero ahora**: `width` 0%→score%, 1.2s cubic-bezier(0.22,1,0.36,1), delay 80ms
 
 Todos tienen `@media (prefers-reduced-motion: reduce)` que corta o sustituye con crossfade.
 
@@ -162,36 +191,36 @@ Z-index scale implícita: acct-menu(50) → mob-nav(20) → toast(100) → login
 
 ## Current State & Known Next Steps
 
-Sesión 2 (jun 2026 — esta sesión):
+Sesión 2 (jun 2026):
 - Creados PRODUCT.md y DESIGN.md (no existían)
-- **Optimizer completamente rediseñado**: resultado full-width debajo del grid; 3 variantes de título con barra de caracteres; descripción mejorada; tarjetas de keywords, mejor momento y puntuación; side card con intel de demanda en tiempo real al tipear la marca (cross-reference con MARKET_BRANDS)
-- **Dashboard**: health card expandida con 3 vitales (sell-through %, parados, días/venta); recomendaciones con badges de prioridad (URGENTE / OPORTUNIDAD / CONSEJO)
-- Datos del calendario: **NO son de Vinted** — son un modelo algorítmico basado en patrones de compra. El radar SÍ es live (API Vinted).
+- Optimizer rediseñado: resultado full-width, 3 variantes de título, intel de demanda cross-reference con MARKET_BRANDS
+- Dashboard: health vitals (sell-through %, parados, días/venta); badges prioridad URGENTE/OPORTUNIDAD/CONSEJO
 
 Sesión anterior (commit e7f4e0b):
-- Demand history + sparklines en el radar ranking
-- Mobile responsive completo + bottom nav
-- PWA configurado (manifest.json)
+- Demand history + sparklines radar ranking
+- Mobile responsive completo + bottom nav PWA
 
 Sesión 3 (jun 2026):
-- **Calendar ahora usa datos reales de Vinted**: `api/calendar.js` fetcha ~240 items recientes en 4 queries paralelas (catálogo general + Nike + Zara + Carhartt), extrae timestamps, construye heatmap 7×17 en zona horaria Spain (CET/CEST), blenda con modelo algorítmico (70% live si ≥50 muestras, 40% si ≥20, puro algo si <20). Cache 5min edge (debug).
-- `calendarDataStatus` eyebrow en la vista Calendar (igual que radarDataStatus en Radar): gris si usa modelo, verde live si usa datos Vinted.
-- Preload en `init()` junto al radar, re-fetch al navegar a la vista Calendar.
+- Calendar con blend live/algorítmico en `api/calendar.js` (4 queries paralelas Vinted, blend 70/40/0% según muestras)
+- Confirmado: API Vinted `/catalog/items` **no devuelve timestamps** en ningún campo → calendar usa siempre modelo algorítmico
 
 Sesión 4 (jun 2026):
-- **Hardening de seguridad completo**:
-  - `api/_lib/tokens.js`: librería centralizada de tokens; AES-256-GCM encripta el contenido del Blob antes de escribir; prefijo `"enc:"` distingue cifrado vs legado; content-type `application/octet-stream`; resolveVintedTokens() con auto-refresh si el access_token expira; fallback env var VINTED_ACCESS_TOKEN
-  - `api/_lib/auth.js`: añadido `rateLimit()` (ventana deslizante in-memory) y `rlKey()` (user ID > IP)
-  - `api/save-tokens.js`: reescrito; acepta solo refresh_token y deriva access_token vía OAuth; validación `isValidJWT()` (3 segmentos base64url, max 4096 chars); rate limit 10/10min por usuario; graba cifrado
-  - `api/radar.js`: refactor para usar _lib/tokens.js (eliminadas ~120 líneas duplicadas); rate limit 30/min
-  - `api/calendar.js`: ídem refactor; rate limit 30/min
-  - `api/cron/refresh-token.js`: simplificado, usa tokens lib; Vercel Cron diario 06:00 UTC auto-rota refresh_token
-  - `vercel.json`: crons array con schedule `"0 6 * * *"`
-- **Token UX**: en Ajustes, solo se necesita pegar el refresh_token; el backend deriva el access_token automáticamente
-- **Vercel Blob**: corregido error "access must be 'public'" (Hobby plan solo soporta public blobs); contenido cifrado antes de guardar
-- **Configuración requerida**: añadir `TOKEN_ENCRYPTION_KEY` (64 hex chars) en Vercel Dashboard → Settings → Environment Variables
+- Hardening seguridad: `api/_lib/tokens.js` (AES-256-GCM Blob), `api/_lib/auth.js` (rate limit), `api/save-tokens.js` (solo refresh_token), cron diario 06:00 UTC
+- `@vercel/blob` v2.4.0: blobs privados con `get(pathname, {access:"private"})` y `put()` con `access:"private"`, `allowOverwrite:true`
+- `TOKEN_ENCRYPTION_KEY` (64 hex): pendiente de configurar en Vercel env vars
 
-Pendiente / posible próxima sesión:
-- Posible: aumentar cache del calendar de 5min a 6h cuando el diagnóstico confirme timestamps OK
-- Posible: añadir vista de Analytics o histórico de ventas
+Sesión 5 (16 jun 2026):
+- **Calendar V2 — Timing Command Center** (commit 5365e25): rediseño completo de la vista Calendario
+  - `app.js`: `renderCalendar()` reescrito + helpers `renderDayCurve()`, `renderWeekStrip()`, `_calCatmullPath()`
+  - `index.html`: hero 3-col (`.cal-hero`), contenedor SVG (`.cal-curve-wrap`), strip semanal (`.cal-week`)
+  - `styles.css`: eliminados `.heat-*`, `.slot-list`, `.slot`, `.st-*`; añadido todo `.cal-*` y `.slot-v2`
+  - Lógica de veredicto en tiempo real: `cv-now` (≥70) / `cv-good` (≥45) / `cv-soon` (<45) / `cv-wait` (fuera horario)
+  - SVG catmull-rom animado con secuencia encadenada (now-vline → line draw → area fadeIn → peak dot)
+  - Reducción motion: `@media (prefers-reduced-motion: no-preference)` en todos los keyframes; JS check antes del stroke-dashoffset
+
+Pendiente próxima sesión:
+- Seguir mejorando el diseño general (usuario confirmó que continuamos mañana)
+- Rotar `BLOB_READ_WRITE_TOKEN` en Vercel Dashboard (fue expuesto accidentalmente en sesión anterior)
+- Configurar `TOKEN_ENCRYPTION_KEY` en Vercel env vars
+- Posible: vista de Analytics / histórico de ventas
 - Posible: mejorar la vista de Cuentas con más detalle por cuenta

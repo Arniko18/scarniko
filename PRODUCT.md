@@ -10,7 +10,9 @@ Revendedores profesionales de ropa de segunda mano en Vinted (España). Gestiona
 
 ## Product Purpose
 
-Scarniko es el centro de mando para revendedores de Vinted. Centraliza inventario multi-cuenta, detecta marcas en auge antes que la competencia (Radar de Mercado), optimiza el timing de publicación con datos reales de demanda, y genera copys que convierten. Éxito = vender más rápido y con mayor margen sin abrir múltiples pestañas ni hojas de cálculo.
+Scarniko es el centro de mando para revendedores de Vinted. Centraliza inventario multi-cuenta, detecta marcas en auge antes que la competencia (Radar de Mercado), optimiza el timing de publicación con un modelo algorítmico de demanda por hora/día, y genera copys que convierten. Éxito = vender más rápido y con mayor margen sin abrir múltiples pestañas ni hojas de cálculo.
+
+**Nota técnica importante**: La API de Vinted (`/catalog/items`) no expone timestamps en los resultados de búsqueda, por lo que el Calendario usa un modelo algorítmico basado en patrones de comportamiento de compradores españoles (picos noche, máximo domingo 20-22h). El Radar SÍ usa datos en tiempo real de la API de Vinted.
 
 ## Brand Personality
 
