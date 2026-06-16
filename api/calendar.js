@@ -92,6 +92,28 @@ function spainTime(ts) {
   return { hour: localH, day };
 }
 
+// ── Normalise a raw timestamp value to Unix seconds ──────────
+// Vinted may return seconds (10-digit) or milliseconds (13-digit)
+function toUnixSec(v) {
+  if (!v || typeof v !== "number" || v <= 0) return null;
+  return v > 1e12 ? Math.floor(v / 1000) : v; // ms → s if 13+ digits
+}
+
+// ── Extract best timestamp from a Vinted item ────────────────
+function itemTs(it) {
+  // Try all known Vinted timestamp fields
+  return (
+    toUnixSec(it.created_at_ts) ??
+    toUnixSec(it.updated_at_ts) ??
+    toUnixSec(it.bumped_at_ts) ??
+    (typeof it.created_at === "number" ? toUnixSec(it.created_at) : null) ??
+    (it.created_at ? Math.floor(new Date(it.created_at).getTime() / 1000) : null) ??
+    (it.updated_at ? Math.floor(new Date(it.updated_at).getTime() / 1000) : null) ??
+    toUnixSec(it.photo?.timestamp) ??
+    null
+  );
+}
+
 // ── Build 7×17 heatmap from item list ───────────────────────
 function buildLiveMatrix(items) {
   const HOUR_START = 7, HOURS = 17, DAYS = 7;
@@ -99,15 +121,14 @@ function buildLiveMatrix(items) {
   const now = Date.now() / 1000;
   let valid = 0;
 
-  for (const it of items) {
-    // Vinted items may expose timestamps under different keys
-    const ts =
-      it.created_at_ts ??
-      (typeof it.created_at === "number" ? it.created_at : null) ??
-      (it.created_at ? Math.floor(new Date(it.created_at).getTime() / 1000) : null) ??
-      null;
+  // Diagnostic: capture what fields the first item has
+  const firstItemKeys = items[0] ? Object.keys(items[0]).filter(k =>
+    k.includes("at") || k.includes("ts") || k.includes("time") || k.includes("date")
+  ) : [];
 
-    if (!ts || ts <= 0 || ts > now + 120 || ts < now - 14 * 86400) continue;
+  for (const it of items) {
+    const ts = itemTs(it);
+    if (!ts || ts > now + 120 || ts < now - 14 * 86400) continue;
 
     const { hour, day } = spainTime(ts);
     if (hour < HOUR_START || hour >= HOUR_START + HOURS) continue;
@@ -118,7 +139,8 @@ function buildLiveMatrix(items) {
   const maxV = Math.max(1, ...raw.flat());
   return {
     matrix: raw.map(row => row.map(v => Math.round((v / maxV) * 100))),
-    sampleSize: valid
+    sampleSize: valid,
+    diagnosticFields: firstItemKeys
   };
 }
 
@@ -198,20 +220,23 @@ module.exports = async function handler(req, res) {
     );
     const allItems = results.flat();
 
-    const { matrix: liveMatrix, sampleSize } = buildLiveMatrix(allItems);
+    const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
     const algoMatrix = buildAlgoMatrix();
 
     // Blend weight: 70% live when ≥50 samples, 40% at 20-49, pure algo below 20
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
     const finalMatrix = liveWeight > 0 ? blend(liveMatrix, algoMatrix, liveWeight) : algoMatrix;
 
-    res.setHeader("Cache-Control", "s-maxage=21600, stale-while-revalidate=3600");
+    // Short cache while debugging; revert to 21600 once confirmed working
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=60");
     return res.json({
       matrix: finalMatrix,
       sampleSize,
       liveWeight,
       updatedAt: new Date().toISOString(),
-      source: sampleSize >= 20 ? "vinted_live" : "algorithmic"
+      source: sampleSize >= 20 ? "vinted_live" : "algorithmic",
+      itemsTotal: allItems.length,
+      diagnosticFields
     });
   } catch (e) {
     return res.status(500).json({ error: "internal", message: e.message });
