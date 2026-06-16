@@ -223,15 +223,15 @@
             Configuración del token Vinted API
           </summary>
           <div class="token-body">
-            <p class="token-hint">Extrae los valores de las cookies de <b>vinted.es</b>: DevTools → Application → Cookies → www.vinted.es</p>
+            <p class="token-hint">Solo necesitas el <b>refresh_token</b> — el access_token se obtiene automáticamente. Encuéntralo en <b>vinted.es</b> → DevTools → Network → cualquier petición → Header <code>Authorization: Bearer &lt;token&gt;</code> con <code>"purpose":"refresh"</code> en el payload.</p>
             <div class="token-fields">
               <div class="fld">
-                <label>access_token <span class="req">requerido</span></label>
-                <input id="t-access" type="password" autocomplete="off" placeholder="eyJraWQi...">
+                <label>refresh_token <span class="req">requerido</span></label>
+                <input id="t-refresh" type="password" autocomplete="off" placeholder="eyJraWQi...">
               </div>
               <div class="fld">
-                <label>refresh_token <span class="opt">opcional · activa renovación automática</span></label>
-                <input id="t-refresh" type="password" autocomplete="off" placeholder="...">
+                <label>access_token <span class="opt">opcional · si ya lo tienes</span></label>
+                <input id="t-access" type="password" autocomplete="off" placeholder="eyJraWQi...">
               </div>
             </div>
             <div class="token-footer">

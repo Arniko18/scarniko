@@ -1086,29 +1086,31 @@ function navigate(view) {
    ============================================================ */
 async function saveVintedTokens(accessToken, refreshToken) {
   const statusEl = document.getElementById("tokenStatus");
-  if (statusEl) statusEl.textContent = "Guardando...";
+  if (statusEl) statusEl.textContent = refreshToken && !accessToken ? "Obteniendo access_token..." : "Guardando...";
   try {
     const { data: { session: saveSession } } = await supa.auth.getSession();
     if (!saveSession) throw new Error("Sesión no activa");
+    const body = {};
+    if (accessToken) body.access_token = accessToken;
+    if (refreshToken) body.refresh_token = refreshToken;
     const res = await fetch("/api/save-tokens", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${saveSession.access_token}`
-      },
-      body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken || null })
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${saveSession.access_token}` },
+      body: JSON.stringify(body)
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      throw new Error(d.error || "Error " + res.status);
+      throw new Error(d.detail || d.error || "Error " + res.status);
     }
+    const result = await res.json();
     radarLiveLoaded = false;
+    calendarLiveLoaded = false;
     document.getElementById("t-access").value = "";
     document.getElementById("t-refresh").value = "";
-    if (statusEl) statusEl.textContent = "Guardado · actualizando radar...";
+    if (statusEl) statusEl.textContent = result.derived ? "Access token obtenido · actualizando..." : "Guardado · actualizando...";
     toast("Token guardado");
-    await loadRadarData();
-    if (statusEl) statusEl.textContent = "Token activo · el radar usa datos en tiempo real";
+    await Promise.all([loadRadarData(), loadCalendarData()]);
+    if (statusEl) statusEl.textContent = "Token activo · radar y calendario en tiempo real";
   } catch (e) {
     if (statusEl) statusEl.textContent = "Error: " + e.message;
     toast("Error guardando token");
@@ -1217,8 +1219,8 @@ async function init() {
     saveTokenBtn.onclick = () => {
       const at = document.getElementById("t-access")?.value.trim();
       const rt = document.getElementById("t-refresh")?.value.trim();
-      if (!at) { toast("Pega el access_token primero"); return; }
-      saveVintedTokens(at, rt || null);
+      if (!rt && !at) { toast("Pega al menos el refresh_token"); return; }
+      saveVintedTokens(at || null, rt || null);
     };
   }
 
