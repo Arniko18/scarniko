@@ -87,8 +87,8 @@ async function writeTokensToBlob(accessToken, refreshToken) {
     updated_at:    new Date().toISOString()
   }));
   const { put } = await import("@vercel/blob");
-  // No explicit token/access — SDK auto-detects both from BLOB_READ_WRITE_TOKEN env var
   await put("vinted-auth.json", payload, {
+    access: "public",
     contentType: "application/octet-stream",
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -169,6 +169,7 @@ async function writeHistory(snapshots) {
   try {
     const { put } = await import("@vercel/blob");
     await put("radar-history.json", JSON.stringify(snapshots), {
+      access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
       allowOverwrite: true,
