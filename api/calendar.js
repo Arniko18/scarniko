@@ -155,8 +155,6 @@ module.exports = async function handler(req, res) {
     const results = await Promise.all(QUERIES.map(({ q, per }) => fetchItems(q, per, vHeaders)));
     const allItems = results.flat();
     const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
-    const f = allItems[0] || {};
-    console.log("[cal]", JSON.stringify({ n: allItems.length, ss: sampleSize, ph0ts: f.photos?.[0]?.timestamp, ph0hr: f.photos?.[0]?.high_resolution?.timestamp, phts: f.photo?.timestamp }));
     const algoMatrix = buildAlgoMatrix();
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
     const finalMatrix = liveWeight > 0 ? blend(liveMatrix, algoMatrix, liveWeight) : algoMatrix;

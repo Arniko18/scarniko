@@ -442,7 +442,7 @@ async function loadCalendarData() {
       : null;
     if (statusEl) statusEl.innerHTML = data.source === "vinted_live"
       ? `<span class="pulse-dot"></span>Datos en tiempo real · Vinted API${quality ? " · " + quality : ""} · ${minsLabel}`
-      : `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda · sin timestamps`;
+      : `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo algorítmico · patrones típicos de España`;
   } catch (e) {
     console.error("[calendar] exception", e);
     if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
