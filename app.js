@@ -406,6 +406,7 @@ async function loadCalendarData() {
   try {
     const { data: { session: calSession } } = await supa.auth.getSession();
     if (!calSession) {
+      console.warn("[calendar] no session");
       if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
       return;
     }
@@ -413,11 +414,15 @@ async function loadCalendarData() {
       headers: { Authorization: `Bearer ${calSession.access_token}` }
     });
     if (!res.ok) {
-      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
+      const errBody = await res.json().catch(() => ({}));
+      console.warn("[calendar] API error", res.status, errBody);
+      if (statusEl) statusEl.innerHTML = `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda · error ${res.status}`;
       return;
     }
     const data = await res.json();
+    console.log("[calendar] API response", { source: data.source, sampleSize: data.sampleSize, liveWeight: data.liveWeight, updatedAt: data.updatedAt });
     if (!Array.isArray(data.matrix)) {
+      console.warn("[calendar] no matrix in response", data);
       if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
       return;
     }
@@ -437,8 +442,9 @@ async function loadCalendarData() {
       : null;
     if (statusEl) statusEl.innerHTML = data.source === "vinted_live"
       ? `<span class="pulse-dot"></span>Datos en tiempo real · Vinted API${quality ? " · " + quality : ""} · ${minsLabel}`
-      : `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda · ${minsLabel}`;
-  } catch (_) {
+      : `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda · sin timestamps`;
+  } catch (e) {
+    console.error("[calendar] exception", e);
     if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
   }
 }
