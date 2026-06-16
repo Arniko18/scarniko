@@ -46,8 +46,11 @@ module.exports = async function handler(req, res) {
   if (!isValidJWT(access_token)) return res.status(400).json({ error: "invalid_access_token_from_vinted" });
 
   // ── Persist (encrypted) ──────────────────────────────────────
-  const ok = await writeTokensToBlob(access_token, refresh_token);
-  if (!ok) return res.status(500).json({ error: "blob_write_failed" });
+  try {
+    await writeTokensToBlob(access_token, refresh_token);
+  } catch (e) {
+    return res.status(500).json({ error: "blob_write_failed", detail: e.message });
+  }
 
   return res.json({ ok: true, derived, expires_at: new Date(jwtExp(access_token) * 1000).toISOString() });
 };

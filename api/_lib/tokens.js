@@ -81,24 +81,22 @@ async function readTokensFromBlob() {
 // ── Blob: write tokens (encrypted) ───────────────────────────
 async function writeTokensToBlob(accessToken, refreshToken) {
   const bt = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!bt) return false;
-  try {
-    const payload = encrypt(JSON.stringify({
-      access_token:  accessToken,
-      refresh_token: refreshToken || null,
-      expires_at:    jwtExp(accessToken),
-      updated_at:    new Date().toISOString()
-    }));
-    const { put } = await import("@vercel/blob");
-    await put("vinted-auth.json", payload, {
-      access: "public",
-      contentType: "application/octet-stream", // hide content type
-      addRandomSuffix: false,
-      token: bt,
-      allowOverwrite: true
-    });
-    return true;
-  } catch { return false; }
+  if (!bt) throw new Error("BLOB_READ_WRITE_TOKEN not set");
+  const payload = encrypt(JSON.stringify({
+    access_token:  accessToken,
+    refresh_token: refreshToken || null,
+    expires_at:    jwtExp(accessToken),
+    updated_at:    new Date().toISOString()
+  }));
+  const { put } = await import("@vercel/blob");
+  await put("vinted-auth.json", payload, {
+    access: "public",
+    contentType: "application/octet-stream",
+    addRandomSuffix: false,
+    token: bt,
+    allowOverwrite: true
+  });
+  return true;
 }
 
 // ── Vinted OAuth refresh ─────────────────────────────────────
