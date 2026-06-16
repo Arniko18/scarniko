@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
     }
     if (!history.some(s => s.date === today)) {
       const updated = [...history, { date: today, brands: brands.map(b => ({ name: b.name, demand: b.demand })) }].slice(-30);
-      await writeHistory(updated);
+      try { await writeHistory(updated); } catch { /* non-fatal: history write failure doesn't break radar */ }
       history.push({ date: today, brands: brands.map(b => ({ name: b.name, demand: b.demand })) });
     }
 

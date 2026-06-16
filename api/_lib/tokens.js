@@ -137,7 +137,7 @@ async function resolveVintedTokens() {
     accessToken  = process.env.VINTED_TOKEN ?? null;
     refreshToken = process.env.VINTED_REFRESH_TOKEN ?? null;
     if (accessToken && refreshToken) {
-      await writeTokensToBlob(accessToken, refreshToken);
+      try { await writeTokensToBlob(accessToken, refreshToken); } catch { /* non-fatal */ }
     }
   }
 
@@ -149,7 +149,7 @@ async function resolveVintedTokens() {
     if (!refreshed) return null;
     accessToken  = refreshed.access_token;
     refreshToken = refreshed.refresh_token ?? refreshToken;
-    await writeTokensToBlob(accessToken, refreshToken);
+    try { await writeTokensToBlob(accessToken, refreshToken); } catch { /* non-fatal */ }
   }
 
   return { accessToken, refreshToken };
