@@ -42,8 +42,21 @@ module.exports = async function handler(req, res) {
 
         if (expired && parsed.refresh_token) {
           try {
-            const refreshed = await refreshVintedToken(parsed.refresh_token);
-            result.steps.push({ refresh_attempt: refreshed ? "ok" : "returned_null" });
+            const r = await fetch("https://www.vinted.es/oauth/token", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+                Accept: "application/json",
+                "Accept-Language": "es-ES,es;q=0.9",
+                Origin: "https://www.vinted.es",
+                Referer: "https://www.vinted.es/"
+              },
+              body: JSON.stringify({ grant_type: "refresh_token", refresh_token: parsed.refresh_token, client_id: "web", scope: "user" }),
+              signal: AbortSignal.timeout(10000)
+            });
+            const body = await r.text();
+            result.steps.push({ refresh_attempt: { status: r.status, ok: r.ok, body_preview: body.slice(0, 200) } });
           } catch (re) {
             result.steps.push({ refresh_attempt: "error", msg: re.message });
           }
