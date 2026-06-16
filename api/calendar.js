@@ -65,6 +65,8 @@ function itemTs(it) {
     strTs(it.updated_at),
     strTs(it.created_at),
     toUnixSec(it.photo?.timestamp),
+    toUnixSec(it.photos?.[0]?.timestamp),
+    toUnixSec(it.photos?.[0]?.high_resolution?.timestamp),
   ].filter(t => t && t > 0);
   return candidates.length ? Math.max(...candidates) : null;
 }
@@ -154,7 +156,7 @@ module.exports = async function handler(req, res) {
     const allItems = results.flat();
     const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
     const f = allItems[0] || {};
-    console.log("[cal]", JSON.stringify({ n: allItems.length, ss: sampleSize, cat_ts: f.created_at_ts, uat_ts: f.updated_at_ts, bat_ts: f.bumped_at_ts, cat: f.created_at, uat: f.updated_at, bat: f.bumped_at }));
+    console.log("[cal]", JSON.stringify({ n: allItems.length, ss: sampleSize, ph0ts: f.photos?.[0]?.timestamp, ph0hr: f.photos?.[0]?.high_resolution?.timestamp, phts: f.photo?.timestamp }));
     const algoMatrix = buildAlgoMatrix();
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
     const finalMatrix = liveWeight > 0 ? blend(liveMatrix, algoMatrix, liveWeight) : algoMatrix;
