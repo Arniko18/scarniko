@@ -174,10 +174,24 @@ Sesión anterior (commit e7f4e0b):
 - PWA configurado (manifest.json)
 
 Sesión 3 (jun 2026):
-- **Calendar ahora usa datos reales de Vinted**: `api/calendar.js` fetcha ~240 items recientes en 4 queries paralelas (catálogo general + Nike + Zara + Carhartt), extrae timestamps, construye heatmap 7×17 en zona horaria Spain (CET/CEST), blenda con modelo algorítmico (70% live si ≥50 muestras, 40% si ≥20, puro algo si <20). Cache 6h edge.
+- **Calendar ahora usa datos reales de Vinted**: `api/calendar.js` fetcha ~240 items recientes en 4 queries paralelas (catálogo general + Nike + Zara + Carhartt), extrae timestamps, construye heatmap 7×17 en zona horaria Spain (CET/CEST), blenda con modelo algorítmico (70% live si ≥50 muestras, 40% si ≥20, puro algo si <20). Cache 5min edge (debug).
 - `calendarDataStatus` eyebrow en la vista Calendar (igual que radarDataStatus en Radar): gris si usa modelo, verde live si usa datos Vinted.
 - Preload en `init()` junto al radar, re-fetch al navegar a la vista Calendar.
 
+Sesión 4 (jun 2026):
+- **Hardening de seguridad completo**:
+  - `api/_lib/tokens.js`: librería centralizada de tokens; AES-256-GCM encripta el contenido del Blob antes de escribir; prefijo `"enc:"` distingue cifrado vs legado; content-type `application/octet-stream`; resolveVintedTokens() con auto-refresh si el access_token expira; fallback env var VINTED_ACCESS_TOKEN
+  - `api/_lib/auth.js`: añadido `rateLimit()` (ventana deslizante in-memory) y `rlKey()` (user ID > IP)
+  - `api/save-tokens.js`: reescrito; acepta solo refresh_token y deriva access_token vía OAuth; validación `isValidJWT()` (3 segmentos base64url, max 4096 chars); rate limit 10/10min por usuario; graba cifrado
+  - `api/radar.js`: refactor para usar _lib/tokens.js (eliminadas ~120 líneas duplicadas); rate limit 30/min
+  - `api/calendar.js`: ídem refactor; rate limit 30/min
+  - `api/cron/refresh-token.js`: simplificado, usa tokens lib; Vercel Cron diario 06:00 UTC auto-rota refresh_token
+  - `vercel.json`: crons array con schedule `"0 6 * * *"`
+- **Token UX**: en Ajustes, solo se necesita pegar el refresh_token; el backend deriva el access_token automáticamente
+- **Vercel Blob**: corregido error "access must be 'public'" (Hobby plan solo soporta public blobs); contenido cifrado antes de guardar
+- **Configuración requerida**: añadir `TOKEN_ENCRYPTION_KEY` (64 hex chars) en Vercel Dashboard → Settings → Environment Variables
+
 Pendiente / posible próxima sesión:
+- Posible: aumentar cache del calendar de 5min a 6h cuando el diagnóstico confirme timestamps OK
 - Posible: añadir vista de Analytics o histórico de ventas
 - Posible: mejorar la vista de Cuentas con más detalle por cuenta
