@@ -503,14 +503,81 @@ tbody tr:hover td { background: var(--surface-2); }
 .reco .rtxt { font-size: 13.5px; color: var(--dim); }
 .reco .rtxt b { color: var(--text); }
 
-/* optimizer result */
-.opt-result { margin-top: 16px; display: none; flex-direction: column; gap: 12px; }
-.opt-result.show { display: flex; animation: viewIn 0.4s; }
-.opt-row .ql { font-size: 11px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-.opt-row .qv { font-size: 14px; background: var(--surface-2); padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--border-2); line-height: 1.6; }
-.copy-mini { font-size: 11px; color: var(--primary); cursor: pointer; font-weight: 700; font-family: var(--f-mono); display: inline-flex; align-items: center; gap: 4px; }
+/* ── OPTIMIZER — side card intel ──────────────────────── */
+.opt-intel-block {
+  padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-2);
+}
+.opt-intel-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.opt-intel-brand .brand-n { font-family: var(--f-display); font-weight: 700; font-size: 15px; flex: 1; }
+.opt-demand-meter { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.opt-demand-track { flex: 1; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.opt-demand-fill { height: 100%; border-radius: 999px; background: var(--primary); box-shadow: 0 0 10px -2px var(--glow); transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
+.opt-demand-num { font-family: var(--f-mono); font-size: 12px; font-weight: 700; color: var(--text); width: 44px; text-align: right; flex-shrink: 0; }
+.opt-price-note { font-size: 12px; color: var(--dim); line-height: 1.5; background: color-mix(in oklab, var(--primary) 6%, var(--surface-2)); border: 1px solid color-mix(in oklab, var(--primary) 22%, transparent); border-radius: var(--r-sm); padding: 9px 12px; }
+.opt-price-note b { color: var(--text); }
+
+/* ── OPTIMIZER — result (full-width below grid) ───────── */
+.opt-result { display: none; flex-direction: column; gap: 14px; margin-top: 18px; }
+.opt-result.show { display: flex; animation: viewIn 0.45s cubic-bezier(0.22,1,0.36,1); }
+
+.opt-section { background: var(--surface); background-image: var(--card-grad); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.opt-section-head { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--border-2); background: color-mix(in oklab, var(--primary) 4%, var(--surface)); }
+.opt-section-head .s-ic { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in oklab, var(--primary) 13%, transparent); color: var(--primary); flex-shrink: 0; }
+.opt-section-head .s-ic svg { width: 13px; height: 13px; }
+.opt-section-head .s-title { font-family: var(--f-mono); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); }
+.opt-section-head .s-badge { margin-left: auto; font-family: var(--f-mono); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: color-mix(in oklab, var(--primary) 14%, transparent); color: var(--primary); }
+.opt-section-body { padding: 15px 18px; }
+
+.opt-var-list { display: flex; flex-direction: column; gap: 8px; }
+.opt-var-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border-2); transition: border-color 0.15s; }
+.opt-var-item:hover { border-color: color-mix(in oklab, var(--primary) 35%, transparent); }
+.opt-var-n { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in oklab, var(--primary) 14%, transparent); color: var(--primary); font-family: var(--f-mono); font-weight: 700; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+.opt-var-body { flex: 1; min-width: 0; }
+.opt-var-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; line-height: 1.4; }
+.opt-var-meta { display: flex; align-items: center; gap: 8px; }
+.opt-char-bar { width: 72px; height: 3px; background: var(--border-2); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+.opt-char-fill { height: 100%; border-radius: 999px; background: var(--lime); }
+.opt-char-fill.warn { background: var(--amber); }
+.opt-char-fill.over { background: var(--pink); }
+.opt-char-n { font-family: var(--f-mono); font-size: 10.5px; color: var(--faint); }
+
+.opt-desc-body { font-size: 14px; line-height: 1.7; color: var(--dim); margin-bottom: 10px; }
+.opt-desc-foot { display: flex; align-items: center; justify-content: space-between; }
+.opt-char-info { font-family: var(--f-mono); font-size: 11px; color: var(--faint); }
+
+.opt-meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 860px) { .opt-meta-grid { grid-template-columns: 1fr; } }
+.opt-meta-card { background: var(--surface); background-image: var(--card-grad); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 15px 16px; }
+.opt-meta-label { font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--faint); margin-bottom: 10px; }
+.opt-timing-day { font-size: 12.5px; color: var(--dim); margin-bottom: 2px; }
+.opt-timing-time { font-family: var(--f-display); font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; letter-spacing: -0.3px; }
+.opt-timing-note { font-size: 11.5px; color: var(--faint); }
+.opt-score-grade { font-family: var(--f-display); font-size: 46px; font-weight: 700; line-height: 1; margin-bottom: 3px; }
+.grade-Ap { color: var(--lime); }
+.grade-A  { color: var(--lime); }
+.grade-B  { color: var(--amber); }
+.grade-C  { color: var(--faint); }
+.opt-score-sub { font-size: 11.5px; color: var(--faint); margin-bottom: 8px; }
+.opt-score-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.opt-pill { font-size: 10px; font-family: var(--f-mono); font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+.opt-pill.ok { background: color-mix(in oklab, var(--lime) 14%, transparent); color: var(--lime); }
+.opt-pill.miss { background: var(--surface-2); color: var(--faint); opacity: 0.55; }
+
+.copy-mini { font-size: 11px; color: var(--primary); cursor: pointer; font-weight: 700; font-family: var(--f-mono); display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0; flex-shrink: 0; }
 .copy-mini svg { width: 13px; height: 13px; }
 .note { font-size: 12.5px; color: var(--faint); margin-top: 12px; line-height: 1.6; }
+
+/* ── DASHBOARD — reco priority + health vitals ──────── */
+.reco-prio { display: inline-block; font-family: var(--f-mono); font-size: 9px; font-weight: 800; letter-spacing: 0.05em; padding: 1px 6px; border-radius: 4px; margin-right: 5px; vertical-align: middle; position: relative; top: -1px; }
+.reco-prio.urgent { background: color-mix(in oklab, var(--amber) 18%, transparent); color: var(--amber); }
+.reco-prio.opp { background: color-mix(in oklab, var(--lime) 15%, transparent); color: var(--lime); }
+.reco-prio.tip { background: color-mix(in oklab, var(--teal) 12%, transparent); color: var(--teal); }
+
+.health-vitals { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-2); }
+.hv-item { padding: 5px 8px; text-align: center; }
+.hv-item + .hv-item { border-left: 1px solid var(--border-2); }
+.hv-val { font-family: var(--f-display); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.hv-lbl { font-size: 9.5px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
 /* toast */
 .toast {

@@ -265,37 +265,59 @@ function renderDashboard() {
     </div>`).join("");
   $$("#dashStats .num").forEach(el => countUp(el, +el.dataset.cnt, { suffix: el.dataset.suffix }));
 
-  // health gauge
+  // health gauge + vitals
   const health = Math.min(100, Math.round(sellThrough * 0.5 + (100 - Math.min(100, stale * 12)) * 0.3 + Math.min(100, totalUnitsSold * 6) * 0.2));
+  const soldWithDates = sold.filter(x => x.soldDate && x.added && x.soldDate > x.added);
+  const avgDays = soldWithDates.length
+    ? Math.round(soldWithDates.reduce((s, x) => s + (x.soldDate - x.added) / 86400000, 0) / soldWithDates.length)
+    : null;
   $("#healthGauge").innerHTML = `
     <div class="gauge">
       ${gaugeRing(health, { color: "var(--primary)" })}
       <div><div class="gv">${health}<span style="font-size:14px;color:var(--faint)">/100</span></div>
       <div class="gl">Salud de ventas</div></div>
+    </div>
+    <div class="health-vitals">
+      <div class="hv-item">
+        <div class="hv-val ${sellThrough >= 50 ? "up" : sellThrough >= 30 ? "neu" : "down"}">${sellThrough}%</div>
+        <div class="hv-lbl">Sell-through</div>
+      </div>
+      <div class="hv-item">
+        <div class="hv-val ${stale === 0 ? "up" : "down"}">${stale}</div>
+        <div class="hv-lbl">Parados</div>
+      </div>
+      <div class="hv-item">
+        <div class="hv-val">${avgDays !== null ? avgDays + "d" : "—"}</div>
+        <div class="hv-lbl">Días/venta</div>
+      </div>
     </div>`;
   animateGauges($("#healthGauge"));
 
-  // recommendations
+  // recommendations with priority tiers
   const recos = [];
   if (stale > 0) {
     const names = inStock.filter(x => status(x) === "stale").map(x => x.name).slice(0, 2).join(", ");
-    recos.push({ c: "amber", ic: I.clock, t: `<b>${stale} prenda(s)</b> llevan +${STALE} días sin vender (${esc(names)}). Republica bajando precio y renueva las fotos.` });
-  }
-  if (totalUnitsSold >= 3) {
-    const byCat = {}; sold.forEach(x => byCat[x.cat] = (byCat[x.cat] || 0) + (x.qty || 1));
-    const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
-    recos.push({ c: "lime", ic: I.trend, t: `Tu categoría estrella es <b>${esc(top[0])}</b> (${top[1]} ventas). Compra más de ahí: es tu dinero fácil.` });
+    recos.push({ c:"amber", ic:I.clock, prio:"urgent", t:`<b>${stale} prenda(s)</b> llevan +${STALE} días sin vender (${esc(names)}). Republica bajando precio y renueva las fotos.` });
   }
   const hotInStock = inStock.filter(x => MARKET_BRANDS.find(b => b.name.toLowerCase() === (x.brand || "").toLowerCase() && (b.heat === "hot" || b.heat === "rising")));
   if (hotInStock.length) {
     const hotUnits = hotInStock.reduce((s, x) => s + (x.qty || 1), 0);
-    recos.push({ c: "teal", ic: I.fire, t: `Tienes <b>${hotUnits} prenda(s)</b> de marcas que vuelan ahora (${esc(hotInStock.slice(0,2).map(x=>x.brand).join(", "))}). Súbelas en hora punta esta semana.` });
+    recos.push({ c:"teal", ic:I.fire, prio:"opp", t:`Tienes <b>${hotUnits} prenda(s)</b> de marcas que vuelan ahora (${esc(hotInStock.slice(0,2).map(x=>x.brand).join(", "))}). Súbelas en hora punta esta semana.` });
   }
-  recos.push({ c: "violet", ic: I.clock, t: `El <b>domingo 20–22h</b> es el mejor momento global para publicar. Mira el <b>Calendario</b> para programar tus drops.` });
-  recos.push({ c: "teal", ic: I.radar, t: `Antes de tu próxima compra, revisa el <b>Radar de Mercado</b>: Salomon (+18%) y New Balance (+14%) están explotando.` });
+  if (totalUnitsSold >= 3) {
+    const byCat = {}; sold.forEach(x => byCat[x.cat] = (byCat[x.cat] || 0) + (x.qty || 1));
+    const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    recos.push({ c:"lime", ic:I.trend, prio:"opp", t:`Tu categoría estrella es <b>${esc(top[0])}</b> (${top[1]} ventas). Compra más de ahí para escalar tus ingresos.` });
+  }
+  recos.push({ c:"violet", ic:I.clock, prio:"tip", t:`El <b>domingo 20–22h</b> es el mejor momento global. Mira el <b>Calendario</b> para programar tus drops de esta semana.` });
+  recos.push({ c:"teal", ic:I.radar, prio:"tip", t:`Antes de tu próxima compra, revisa el <b>Radar de Mercado</b>: Salomon (+18%) y New Balance (+14%) están explotando.` });
 
+  const PRIO_LABEL = { urgent:"URGENTE", opp:"OPORTUNIDAD", tip:"CONSEJO" };
   $("#dashRecos").innerHTML = recos.map(r => `
-    <div class="reco"><div class="ric reco-${r.c}">${r[ "ic"]}</div><div class="rtxt">${r.t}</div></div>`).join("");
+    <div class="reco">
+      <div class="ric reco-${r.c}">${r.ic}</div>
+      <div class="rtxt"><span class="reco-prio ${r.prio}">${PRIO_LABEL[r.prio]}</span>${r.t}</div>
+    </div>`).join("");
 
   // mini account overview
   $("#dashAccts").innerHTML = DB.accounts.map(a => {
@@ -319,6 +341,7 @@ let radarStarted = false;
 let radarTries = 0;
 let radarLiveLoaded = false;
 let radarHistory = [];
+let calendarLiveLoaded = false;
 
 async function loadRadarData() {
   if (radarLiveLoaded) return;
@@ -373,6 +396,50 @@ async function loadRadarData() {
     if (statusEl) statusEl.innerHTML = `<span class="pulse-dot"></span>Datos en tiempo real · Vinted API · ${minsLabel}`;
   } catch (_) {
     if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
+  }
+}
+
+async function loadCalendarData() {
+  if (calendarLiveLoaded) return;
+  const statusEl = document.getElementById("calendarDataStatus");
+  if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Cargando datos desde Vinted...';
+  try {
+    const { data: { session: calSession } } = await supa.auth.getSession();
+    if (!calSession) {
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
+      return;
+    }
+    const res = await fetch("/api/calendar", {
+      headers: { Authorization: `Bearer ${calSession.access_token}` }
+    });
+    if (!res.ok) {
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
+      return;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data.matrix)) {
+      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
+      return;
+    }
+    // Mutate HEAT_MATRIX in-place so renderCalendar picks up live values
+    data.matrix.forEach((row, d) => row.forEach((v, h) => {
+      if (HEAT_MATRIX[d]) HEAT_MATRIX[d][h] = v;
+    }));
+    calendarLiveLoaded = true;
+    renderCalendar();
+    const ts = new Date(data.updatedAt);
+    const mins = Math.round((Date.now() - ts.getTime()) / 60000);
+    const minsLabel = mins < 2 ? "ahora mismo" : `hace ${mins} min`;
+    const quality = data.sampleSize >= 50
+      ? `${data.sampleSize} anuncios analizados`
+      : data.sampleSize >= 20
+      ? `${data.sampleSize} muestras (blend)`
+      : null;
+    if (statusEl) statusEl.innerHTML = data.source === "vinted_live"
+      ? `<span class="pulse-dot"></span>Datos en tiempo real · Vinted API${quality ? " · " + quality : ""} · ${minsLabel}`
+      : `<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda · ${minsLabel}`;
+  } catch (_) {
+    if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda';
   }
 }
 
@@ -760,36 +827,198 @@ function renderCalendar() {
 /* ============================================================
    OPTIMIZER
    ============================================================ */
-function renderOptimizerStatic() {
-  $("#priceTips").innerHTML = PRICE_TIPS.map(t => `
-    <div class="reco"><div class="ric reco-teal">${I.euro}</div><div class="rtxt">${t}</div></div>`).join("");
+
+function _optSideIntel(intel) {
+  if (!intel) return "";
+  const up = intel.trend >= 0;
+  const hcls = { hot:"h-hot", rising:"h-rising", warm:"h-warm", cool:"h-cool" }[intel.heat];
+  const htxt = { hot:"VUELA", rising:"SUBE", warm:"ALTA", cool:"FRÍA" }[intel.heat];
+  const advice = intel.heat === "hot"
+    ? `<b>Marca que vuela</b> → puedes pedir un <b>15–20% más</b> que la competencia`
+    : intel.heat === "rising"
+    ? `<b>En subida</b> (${up?"+":""}${intel.trend.toFixed(1)}%) → no bajes el precio, la demanda sigue creciendo`
+    : intel.heat === "warm"
+    ? `Demanda sólida → fotos de calidad y precio competitivo marcan la diferencia`
+    : `Demanda baja → <b>compite en precio</b> para rotar rápido`;
+  return `<div class="opt-intel-block">
+    <div class="opt-intel-brand">
+      <span class="brand-n">${esc(intel.name)}</span>
+      <span class="heat-tag ${hcls}">${htxt}</span>
+      <span style="font-family:var(--f-mono);font-size:12px;font-weight:700" class="${up?"up":"down"}">${up?"+":""}${intel.trend.toFixed(1)}%</span>
+    </div>
+    <div class="opt-demand-meter">
+      <div class="opt-demand-track"><div class="opt-demand-fill" style="width:${intel.demand}%"></div></div>
+      <span class="opt-demand-num">${intel.demand}/100</span>
+    </div>
+    ${intel.note ? `<div style="font-size:11.5px;color:var(--faint);margin-bottom:9px">${esc(intel.note)}</div>` : ""}
+    <div class="opt-price-note">${advice}</div>
+  </div>`;
 }
+
+function _renderOptSide(intel) {
+  const el = document.getElementById("priceTips");
+  const titleEl = document.getElementById("optSideTitle");
+  const subEl = document.getElementById("optSideSub");
+  if (!el) return;
+  const tips = intel ? PRICE_TIPS.slice(0, 4) : PRICE_TIPS;
+  el.innerHTML = _optSideIntel(intel) + tips.map(t =>
+    `<div class="reco"><div class="ric reco-teal">${I.euro}</div><div class="rtxt">${t}</div></div>`
+  ).join("");
+  if (titleEl) titleEl.textContent = intel ? `Intel · ${intel.name}` : "Estrategia de precio";
+  if (subEl) subEl.textContent = intel ? `Demanda ${intel.demand}/100 · ${intel.note || ""}` : "Intel de demanda · trucos para cerrar antes";
+}
+
+function renderOptimizerStatic() {
+  _renderOptSide(null);
+  let debounceT;
+  const brandInput = document.getElementById("o-brand");
+  if (brandInput) {
+    brandInput.addEventListener("input", () => {
+      clearTimeout(debounceT);
+      debounceT = setTimeout(() => {
+        const q = brandInput.value.trim().toLowerCase();
+        const match = q ? MARKET_BRANDS.find(b => b.name.toLowerCase() === q) : null;
+        _renderOptSide(match || null);
+      }, 280);
+    });
+  }
+}
+
 function genAd(e) {
   e.preventDefault();
-  const v = id => $("#" + id).value.trim();
-  const brand = v("o-brand"), type = v("o-type"), color = v("o-color"), size = v("o-size"),
-    cond = $("#o-cond").value, style = v("o-style");
-  const title = [brand, type, color, style, size ? "talla " + size : ""].filter(Boolean).join(" ");
-  const kw = [brand, type, color, style].filter(Boolean);
-  const extra = ["segunda mano", "buen estado"];
-  if (/nike|adidas|new balance|vans|converse|jordan|salomon/i.test(brand)) extra.push("original", "auténtico");
-  if (/y2k|vintage/i.test(style)) extra.push("retro", "años 2000");
+  const v = id => (document.getElementById(id)?.value ?? "").trim();
+  const brand = v("o-brand"), type = v("o-type"), color = v("o-color"),
+    size = v("o-size"), cond = document.getElementById("o-cond").value, style = v("o-style");
+  if (!brand && !type) return;
+
+  /* ── title variants ── */
+  const sz = size ? `Talla ${size}` : "";
+  const szS = size ? `T${size}` : "";
+  const HOOK = { "Nuevo con etiqueta":"NUEVO", "Nuevo sin etiqueta":"Estreno", "Muy bueno":"Top estado", "Bueno":"Buen estado", "Satisfactorio":"" };
+  const hook = HOOK[cond] || "";
+  const v1 = [brand, type, color, style, sz].filter(Boolean).join(" ").slice(0, 80);
+  const v2 = [brand, type, szS, color, style].filter(Boolean).join(" ").slice(0, 80);
+  const v3 = [hook, brand, type, color, sz].filter(Boolean).join(" ").slice(0, 80);
+  const rawTitles = [v1, v2, v3];
+  const titles = rawTitles.filter((t, i, a) => t && a.indexOf(t) === i);
+
+  /* ── description ── */
+  const isSneaker = /nike|adidas|new balance|vans|converse|jordan|salomon|asics/i.test(brand);
+  const isVintage = /vintage|y2k|retro|90s|80s/i.test(style);
   const condNote = /satisfactorio/i.test(cond) ? " Consulta las fotos para ver el estado en detalle." : "";
+  const extra = isSneaker ? "100% originales, sin réplicas. " : isVintage ? "Pieza vintage, difícil de encontrar. " : "";
   const desc = `${[brand, type].filter(Boolean).join(" ")}${color ? " en color " + color : ""}${size ? ", talla " + size : ""}. Estado: ${cond.toLowerCase()}.${condNote} `
-    + `${style ? "Perfecto para " + style + ". " : ""}`
-    + `Fotos 100% reales. Envío rápido y bien embalado 📦. Acepto ofertas razonables. ¡Mira mi armario y combina prendas para ahorrar en envío!`;
-  const r = $("#optResult");
+    + (style ? `Perfecto para ${style}. ` : "")
+    + extra
+    + `Fotos 100% reales, sin filtros. Envío rápido y cuidado 📦. Acepto ofertas — ¡escríbeme! Mira mi armario y combina prendas para ahorrar en envío.`;
+
+  /* ── keywords ── */
+  const kw = [brand, type, color, style].filter(Boolean);
+  const kwExtra = ["segunda mano"];
+  if (isSneaker) kwExtra.push("sneakers", "original");
+  if (isVintage) kwExtra.push("vintage", "Y2K");
+  if (/mujer|vestid|blusa|falda/i.test(type)) kwExtra.push("moda mujer");
+  const allKw = [...new Set([...kw, ...kwExtra])];
+
+  /* ── best publish time ── */
+  const timing = isSneaker || /zapatill/i.test(type)
+    ? { day:"Viernes tarde", time:"18–21h", note:"Pico de sneakers en Vinted" }
+    : isVintage
+    ? { day:"Domingo noche", time:"20–22h", note:"El mejor momento global" }
+    : /mujer|vestid|blusa|falda/i.test(type) || /mujer/i.test(style)
+    ? { day:"L–V noche", time:"20–23h", note:"Ideal ropa de mujer" }
+    : /hombre|camisa|chaqueta/i.test(type)
+    ? { day:"Sábado mañana", time:"10–12h", note:"Mejor franja para hombre" }
+    : { day:"Domingo noche", time:"20–22h", note:"El mejor momento global" };
+
+  /* ── listing score ── */
+  const FIELDS = [
+    { key:"Marca", ok:!!brand }, { key:"Tipo", ok:!!type }, { key:"Color", ok:!!color },
+    { key:"Talla", ok:!!size },  { key:"Estilo", ok:!!style }
+  ];
+  const filled = FIELDS.filter(f => f.ok).length;
+  const grade = ["C","C","C","B","A","A+"][filled];
+  const gradeClass = filled >= 4 ? "grade-Ap" : filled >= 3 ? "grade-B" : "grade-C";
+
+  /* ── char bar helper ── */
+  function cbar(len, max = 80) {
+    const pct = Math.min(100, Math.round((len / max) * 100));
+    const cls = pct > 95 ? "over" : pct > 78 ? "warn" : "";
+    return `<div class="opt-char-bar"><div class="opt-char-fill ${cls}" style="width:${pct}%"></div></div>
+            <span class="opt-char-n">${len}/${max} car.</span>`;
+  }
+
+  /* ── render ── */
+  const r = document.getElementById("optResult");
   r.classList.add("show");
   r.innerHTML = `
-    <div class="opt-row"><div class="ql">Título optimizado <span class="copy-mini" data-cp="cp-title">${I.copy}Copiar</span></div><div class="qv" id="cp-title">${esc(title)}</div></div>
-    <div class="opt-row"><div class="ql">Descripción <span class="copy-mini" data-cp="cp-desc">${I.copy}Copiar</span></div><div class="qv" id="cp-desc">${esc(desc)}</div></div>
-    <div class="opt-row"><div class="ql">Palabras clave a incluir</div><div class="chips">${[...kw, ...extra].filter(Boolean).map(k => `<span class="tag">${esc(k)}</span>`).join("")}</div></div>
-    <p class="note">💡 Sube 4–6 fotos con fondo neutro y desde varios ángulos. Los anuncios con buenas fotos se venden mucho antes.</p>`;
-  $$("#optResult [data-cp]").forEach(b => b.onclick = () => {
-    const txt = $("#" + b.dataset.cp).innerText;
-    navigator.clipboard && navigator.clipboard.writeText(txt);
-    b.innerHTML = I.check + "Copiado"; setTimeout(() => b.innerHTML = I.copy + "Copiar", 1400);
+    <div class="opt-section">
+      <div class="opt-section-head">
+        <div class="s-ic">${I.tag}</div>
+        <span class="s-title">Títulos</span>
+        <span class="s-badge">${titles.length} variantes · máx 80 car.</span>
+      </div>
+      <div class="opt-section-body">
+        <div class="opt-var-list">
+          ${titles.map((t, i) => `
+            <div class="opt-var-item">
+              <div class="opt-var-n">${i + 1}</div>
+              <div class="opt-var-body">
+                <div class="opt-var-text" id="ot-${i}">${esc(t)}</div>
+                <div class="opt-var-meta">${cbar(t.length)}</div>
+              </div>
+              <button class="copy-mini" data-cp="ot-${i}">${I.copy}Copiar</button>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="opt-section">
+      <div class="opt-section-head">
+        <div class="s-ic">${I.pen}</div>
+        <span class="s-title">Descripción</span>
+        <span class="s-badge">${desc.length} car.</span>
+      </div>
+      <div class="opt-section-body">
+        <div class="opt-desc-body" id="opt-desc">${esc(desc)}</div>
+        <div class="opt-desc-foot">
+          <span class="opt-char-info">Emojis + llamada a la acción incluidos</span>
+          <button class="copy-mini" data-cp="opt-desc">${I.copy}Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt-meta-grid">
+      <div class="opt-meta-card">
+        <div class="opt-meta-label">Keywords a incluir</div>
+        <div class="chips">${allKw.map(k => `<span class="tag">${esc(k)}</span>`).join("")}</div>
+        <div style="font-size:11.5px;color:var(--faint);margin-top:10px">Ponlas en título o descripción para más visibilidad</div>
+      </div>
+      <div class="opt-meta-card">
+        <div class="opt-meta-label">Mejor momento para publicar</div>
+        <div class="opt-timing-day">${esc(timing.day)}</div>
+        <div class="opt-timing-time">${esc(timing.time)}</div>
+        <div class="opt-timing-note">${esc(timing.note)}</div>
+      </div>
+      <div class="opt-meta-card">
+        <div class="opt-meta-label">Puntuación del anuncio</div>
+        <div class="opt-score-grade ${gradeClass}">${grade}</div>
+        <div class="opt-score-sub">${filled}/5 campos · ${filled >= 4 ? "Bien optimizado" : filled >= 3 ? "Añade más datos" : "Completa los campos"}</div>
+        <div class="opt-score-pills">
+          ${FIELDS.map(f => `<span class="opt-pill ${f.ok?"ok":"miss"}">${f.key}</span>`).join("")}
+        </div>
+      </div>
+    </div>`;
+
+  r.querySelectorAll("[data-cp]").forEach(b => b.onclick = () => {
+    const el = document.getElementById(b.dataset.cp);
+    if (!el) return;
+    navigator.clipboard && navigator.clipboard.writeText(el.innerText);
+    b.innerHTML = I.check + "Copiado!";
+    setTimeout(() => b.innerHTML = I.copy + "Copiar", 1500);
   });
+
+  r.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 /* ============================================================
@@ -842,7 +1071,8 @@ function navigate(view) {
   $$(".nav-item, .mob-nav-item").forEach(n => n.classList.toggle("active", n.dataset.view === view));
   $$(".view").forEach(v => v.classList.toggle("active", v.id === view));
   $(".scroll").scrollTop = 0;
-  if (view === "radar") { setTimeout(startRadar, 60); }
+  if (view === "radar")    { setTimeout(startRadar, 60); }
+  if (view === "calendar") { loadCalendarData(); }
 }
 
 /* ============================================================
@@ -1025,6 +1255,7 @@ async function init() {
   renderOptimizerStatic();
   renderCalendar();
   renderAll();
-  loadRadarData(); // preload in background so radar view shows live data immediately
+  loadRadarData();    // preload radar: live Vinted demand data
+  loadCalendarData(); // preload calendar: live Vinted activity heatmap
 }
 document.addEventListener("DOMContentLoaded", init);

@@ -316,6 +316,7 @@
       <section class="view" id="calendar">
         <div class="page-head">
           <div>
+            <div class="eyebrow" id="calendarDataStatus"><span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda</div>
             <div class="pt">Calendario de Publicación</div>
             <div class="ps">Vinted reordena por fecha de actualización: publicar y republicar en hora punta multiplica tus visitas. Aquí está el mapa de calor de la demanda.</div>
           </div>
@@ -367,13 +368,14 @@
               <div class="fld"><label>Estilo / ocasión</label><input id="o-style" placeholder="vintage, casual"></div>
               <button class="btn btn-primary btn-full" type="submit" style="grid-column:1/-1">Generar anuncio optimizado</button>
             </form>
-            <div class="opt-result" id="optResult"></div>
           </div>
           <div class="card">
-            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 6a7 7 0 1 0 0 12M4 10h9M4 14h9"/></svg></div><div><h2>Trucos de precio</h2><div class="sub">Para cerrar más rápido y con más margen</div></div></div>
+            <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 6a7 7 0 1 0 0 12M4 10h9M4 14h9"/></svg></div><div><h2 id="optSideTitle">Estrategia de precio</h2><div class="sub" id="optSideSub">Intel de demanda · trucos para cerrar antes</div></div></div>
             <div id="priceTips"></div>
           </div>
         </div>
+
+        <div id="optResult" class="opt-result"></div>
       </section>
 
     </div>

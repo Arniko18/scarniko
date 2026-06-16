@@ -1,0 +1,183 @@
+# Design
+
+## Overview
+
+Scarniko usa un tema oscuro como identidad de marca, no como preferencia. Paleta terracota/óxido sobre fondos casi-negros con tinte cálido. Tipografía tripartita: Space Grotesk para encabezados y UI principal, Manrope para cuerpo y etiquetas, JetBrains Mono para datos numéricos y badges. Densidad alta, decoración cero, cada elemento justificado.
+
+## Color Palette
+
+Modo oscuro (por defecto y como identidad):
+
+```
+--bg:        oklch(0.12 0.010 50)   /* fondo principal: casi negro con tinte terracota */
+--bg-2:      oklch(0.10 0.008 50)   /* sidebar / fondo secundario */
+--surface:   oklch(0.17 0.012 48)   /* cards, paneles */
+--surface-2: oklch(0.21 0.012 48)   /* inputs, elementos elevados dentro de cards */
+--elev:      oklch(0.20 0.012 48)   /* menús flotantes, dropdowns */
+--border:    oklch(1 0 0 / 0.085)   /* bordes principales */
+--border-2:  oklch(1 0 0 / 0.048)   /* bordes sutiles entre elementos */
+--text:      oklch(0.95 0.005 65)   /* texto principal */
+--dim:       oklch(0.72 0.008 58)   /* texto secundario / metadata */
+--faint:     oklch(0.60 0.007 58)   /* labels, placeholders, iconos inactivos */
+```
+
+Modo claro (alternativo, usuario puede togglear):
+```
+--bg:        oklch(0.976 0.004 65)
+--text:      oklch(0.18 0.018 55)
+--dim:       oklch(0.42 0.012 58)
+--faint:     oklch(0.48 0.009 58)
+```
+
+Paleta de acento (semántica, earthy, ganada):
+```
+--teal (primario/terracota): oklch(0.62 0.145 35)   /* rust/terracota — voz principal */
+--violet (muted mauve):      oklch(0.58 0.08 300)    /* usado con cuentagotas */
+--lime (sage):               oklch(0.70 0.10 155)    /* positivo / subiendo */
+--amber (earthy amber):      oklch(0.74 0.12 65)     /* calidez / demanda media */
+--pink (clay red):           oklch(0.60 0.12 22)     /* negativo / bajando */
+--blue (slate):              oklch(0.60 0.08 250)    /* estado en-stock */
+```
+
+El primario terracota (`--teal` semánticamente, rust visualmente) es la voz de la marca. Se usa en el logo, nav activo, botones primarios, bordes de tarjeta activa, y glows. Todo lo demás es neutro.
+
+## Typography
+
+Stack tripartito con roles claros:
+
+| Rol | Familia | Pesos |
+|-----|---------|-------|
+| Display / encabezados | Space Grotesk | 500, 600, 700 |
+| Cuerpo / UI | Manrope | 400, 500, 600, 700, 800 |
+| Datos / mono | JetBrains Mono | 400, 500, 700 |
+
+Escala de tamaños:
+- Page title (`.pt`): 30px, Space Grotesk 700, letter-spacing -0.6px
+- Card heading (`h2`): 16px, Space Grotesk 600, letter-spacing -0.2px
+- Body default: 14px, Manrope 500
+- Labels / eyebrows: 11-12px, Manrope 700
+- Mono / datos: 12-13px, JetBrains Mono 700
+- Micro / badges: 10-11px
+
+`text-wrap: balance` en `.pt` (page titles). El mono se aplica a números con `font-variant-numeric: tabular-nums`.
+
+## Spacing & Radius
+
+Escala de radios (contenidos, no exagerados):
+```
+--r-sm: 6px   /* inputs, botones pequeños, badges */
+--r-md: 8px   /* cards secundarias, filas */
+--r-lg: 10px  /* cards principales */
+--r-xl: 14px  /* login box, modales */
+```
+
+Pills y avatares usan `border-radius: 999px`. Nada supera `14px` en cards.
+
+Espaciado de la grilla del scroll: `26px` de padding lateral en desktop, `14px` en mobile. Gap entre cards: `18px`.
+
+## Component Inventory
+
+### Cards
+```
+.card           — surface + border + r-lg + padding 22px + card-grad sutil
+.card.glow      — variante sin el pseudo-before (se usa para el radar)
+.card-h         — cabecera con ícono + título + subtítulo
+.stat           — tile de métrica: label + num + delta + sparkline
+.stat-row       — grid auto-fit minmax(180px,1fr) de stats
+```
+
+### Navigation
+```
+.sidebar        — 248px fijo, colapsa a 76px icónico en <880px, oculto en <640px
+.nav-item       — ítem de nav con active state: bg tintada + inset border-left 3px primario
+.mob-nav        — bottom nav fijo en <640px con blur/backdrop
+.acct-btn       — account switcher en topbar
+.acct-menu      — dropdown flotante del switcher
+```
+
+### Data Display
+```
+.kanban         — 3 columnas (En casa / En Vinted / Vendido), colapsa a 1 col en <1080px
+.kb-card        — tarjeta de prenda con coste→precio→margen + acciones
+.rank-list      — lista de marcas/cuentas con rank badge + sparkline
+.rank-item      — fila individual con .top3 highlight
+.bar-row        — barra de progreso horizontal con animación scaleX
+.heat-grid      — heatmap 17×N para el calendario
+```
+
+### Forms
+```
+.form-grid      — auto-fit grid de campos
+.fld            — campo con label + input
+.stage-toggle   — toggle pill para estado de prenda
+.btn-primary    — CTA principal, primario lleno
+.kb-btn         — botón de acción compacto en kanban
+```
+
+### Feedback
+```
+.toast          — notificación bottom-center, pill, con undo
+.login-overlay  — pantalla completa de auth sobre el fondo de la app
+.empty          — estado vacío centrado con ícono SVG
+.radar-skeleton — skeleton animado de los anillos del radar mientras carga
+```
+
+## Motion
+
+- Entrada de vistas: `viewIn` — `translateY(14px)` → 0, 0.45s `cubic-bezier(0.22,1,0.36,1)`
+- Barras de categoría: `scaleX(0)` → 1, 1.1s `cubic-bezier(0.22,1,0.36,1)`
+- Ticker del topbar: `ticker` linear infinite 38s
+- Skeleton del radar: `rs-pulse` opacity 0.35↔0.65, 1.8s ease-in-out
+- Pulse dot (live): `pulse` — glow ring expand, 2s infinite
+- Menús / dropdowns: opacity + translateY(-6px) + scale(0.98), 0.18s
+- Tema toggle: `background-color/color` 0.45s ease
+
+Todos tienen `@media (prefers-reduced-motion: reduce)` que corta o sustituye con crossfade.
+
+## Layout Architecture
+
+```
+html (theme-dark/light)
+  .bg-fx              — ambient radial + grid de puntos (fixed, z=0)
+  .app                — grid 248px + 1fr (el corazón del layout)
+    .sidebar          — flex col, 22px padding
+    .main             — flex col, 100vh
+      .topbar         — flex row fijo con ticker + search + account switcher
+      .scroll         — overflow-y auto, padding 26px
+        .view         — display:none / .active display:block
+  .mob-nav            — fixed bottom, solo <640px
+  .login-overlay      — fixed inset, z=200
+  .toast              — fixed bottom-center, z=100
+```
+
+Z-index scale implícita: acct-menu(50) → mob-nav(20) → toast(100) → login-overlay(200).
+
+## Responsive Breakpoints
+
+| Breakpoint | Cambio principal |
+|-----------|-----------------|
+| ≤ 1080px  | Radar 1 col, g-3→1 col, kanban→1 col |
+| ≤ 880px   | Sidebar colapsa a iconos (76px), g-2→1 col, search oculto |
+| ≤ 640px   | Sidebar desaparece, mob-nav aparece, padding 14px |
+
+## Current State & Known Next Steps
+
+Sesión 2 (jun 2026 — esta sesión):
+- Creados PRODUCT.md y DESIGN.md (no existían)
+- **Optimizer completamente rediseñado**: resultado full-width debajo del grid; 3 variantes de título con barra de caracteres; descripción mejorada; tarjetas de keywords, mejor momento y puntuación; side card con intel de demanda en tiempo real al tipear la marca (cross-reference con MARKET_BRANDS)
+- **Dashboard**: health card expandida con 3 vitales (sell-through %, parados, días/venta); recomendaciones con badges de prioridad (URGENTE / OPORTUNIDAD / CONSEJO)
+- Datos del calendario: **NO son de Vinted** — son un modelo algorítmico basado en patrones de compra. El radar SÍ es live (API Vinted).
+
+Sesión anterior (commit e7f4e0b):
+- Demand history + sparklines en el radar ranking
+- Mobile responsive completo + bottom nav
+- PWA configurado (manifest.json)
+
+Sesión 3 (jun 2026):
+- **Calendar ahora usa datos reales de Vinted**: `api/calendar.js` fetcha ~240 items recientes en 4 queries paralelas (catálogo general + Nike + Zara + Carhartt), extrae timestamps, construye heatmap 7×17 en zona horaria Spain (CET/CEST), blenda con modelo algorítmico (70% live si ≥50 muestras, 40% si ≥20, puro algo si <20). Cache 6h edge.
+- `calendarDataStatus` eyebrow en la vista Calendar (igual que radarDataStatus en Radar): gris si usa modelo, verde live si usa datos Vinted.
+- Preload en `init()` junto al radar, re-fetch al navegar a la vista Calendar.
+
+Pendiente / posible próxima sesión:
+- Posible: añadir vista de Analytics o histórico de ventas
+- Posible: mejorar la vista de Cuentas con más detalle por cuenta
