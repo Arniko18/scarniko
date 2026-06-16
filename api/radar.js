@@ -50,7 +50,7 @@ async function writeTokensToBlob(accessToken, refreshToken) {
       expires_at: jwtExp(accessToken),
       updated_at: new Date().toISOString()
     }), {
-      access: "private",
+      access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
       token: blobToken,
@@ -79,7 +79,7 @@ async function writeHistory(snapshots) {
   try {
     const { put } = await import("@vercel/blob");
     await put("radar-history.json", JSON.stringify(snapshots), {
-      access: "private", contentType: "application/json",
+      access: "public", contentType: "application/json",
       addRandomSuffix: false, token: blobToken, allowOverwrite: true
     });
   } catch { }

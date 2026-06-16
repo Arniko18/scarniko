@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
       expires_at: jwtExp(access_token),
       updated_at: new Date().toISOString()
     }), {
-      access: "private",
+      access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
       token: blobToken,
