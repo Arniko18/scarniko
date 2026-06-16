@@ -144,7 +144,7 @@ module.exports = async function handler(req, res) {
   try {
     const results = await Promise.all(QUERIES.map(({ q, per }) => fetchItems(q, per, vHeaders)));
     const allItems = results.flat();
-    if (allItems[0]) console.log("[cal-diag] item keys:", Object.keys(allItems[0]).filter(k => /at|ts|time|date/i.test(k)), "| first item sample:", JSON.stringify(allItems[0]).slice(0, 300));
+    console.log("[cal-diag]", JSON.stringify({ n: allItems.length, tsFields: Object.keys(allItems[0]||{}).filter(k => /at|ts|time|date/i.test(k)), v: { cat_ts: allItems[0]?.created_at_ts, cat: allItems[0]?.created_at, uat_ts: allItems[0]?.updated_at_ts, uat: allItems[0]?.updated_at } }));
     const { matrix: liveMatrix, sampleSize, diagnosticFields } = buildLiveMatrix(allItems);
     const algoMatrix = buildAlgoMatrix();
     const liveWeight = sampleSize >= 50 ? 0.70 : sampleSize >= 20 ? 0.40 : 0;
