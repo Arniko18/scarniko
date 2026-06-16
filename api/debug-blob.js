@@ -3,8 +3,7 @@ const { verifyAuth, setCors } = require("./_lib/auth");
 
 module.exports = async function handler(req, res) {
   setCors(req, res, "GET");
-  const user = await verifyAuth(req);
-  if (!user) return res.status(401).json({ error: "unauthorized" });
+  // TEMP: no auth for diagnosis — remove this file after
 
   const bt = process.env.BLOB_READ_WRITE_TOKEN;
   const result = { bt_prefix: bt ? bt.slice(0, 30) : "NOT_SET", steps: [] };
