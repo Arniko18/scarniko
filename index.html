@@ -316,29 +316,52 @@
       <section class="view" id="calendar">
         <div class="page-head">
           <div>
-            <div class="eyebrow" id="calendarDataStatus"><span class="pulse-dot" style="background:var(--faint)"></span>Modelo de demanda</div>
+            <div class="eyebrow" id="calendarDataStatus"><span class="pulse-dot" style="background:var(--faint)"></span>Modelo algorítmico</div>
             <div class="pt">Calendario de Publicación</div>
-            <div class="ps">Vinted reordena por fecha de actualización: publicar y republicar en hora punta multiplica tus visitas. Aquí está el mapa de calor de la demanda.</div>
+            <div class="ps">Vinted reordena por fecha — publicar en hora punta multiplica tus visitas. Aquí tienes el timing exacto.</div>
           </div>
         </div>
 
-        <div class="card glow" style="margin-bottom:18px">
-          <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div><div><h2>Mapa de calor semanal</h2><div class="sub">Día × hora · cuanto más brillante, más compradores conectados</div></div></div>
-          <div class="heat-wrap"><div class="heat-grid" id="heatGrid"></div></div>
-          <div class="heat-scale">Menos demanda
-            <span class="ramp">
-              <i style="background:color-mix(in oklab, var(--primary) 8%, var(--surface-2))"></i>
-              <i style="background:color-mix(in oklab, var(--primary) 30%, var(--surface-2))"></i>
-              <i style="background:color-mix(in oklab, var(--primary) 52%, var(--surface-2))"></i>
-              <i style="background:color-mix(in oklab, var(--primary) 74%, var(--surface-2))"></i>
-              <i style="background:color-mix(in oklab, var(--primary) 92%, var(--surface-2))"></i>
-            </span>Más demanda</div>
+        <!-- Hero: current demand · verdict · best time today -->
+        <div class="cal-hero" style="margin-bottom:18px">
+          <div class="cal-hero-side">
+            <div class="cal-hero-lbl">Demanda ahora</div>
+            <div class="cal-hero-num" id="calNowScore">—</div>
+            <div class="cal-hero-track"><div class="cal-hero-track-fill" id="calNowFill"></div></div>
+            <div class="cal-hero-sub" id="calNowHour">—</div>
+          </div>
+          <div class="cal-verdict">
+            <span class="cal-verdict-badge cv-wait" id="calVerdictBadge">···</span>
+            <div class="cal-verdict-headline" id="calVerdictHeadline">Calculando</div>
+            <div class="cal-verdict-sub" id="calVerdictSub">—</div>
+          </div>
+          <div class="cal-hero-side cal-hero-right">
+            <div class="cal-hero-lbl">Mejor hora hoy</div>
+            <div class="cal-hero-num cal-primary" id="calPeakTime">—</div>
+            <div class="cal-hero-sub" id="calPeakNote">—</div>
+          </div>
         </div>
 
+        <!-- Day demand curve -->
+        <div class="card" style="margin-bottom:18px;padding:20px 22px 16px">
+          <div class="card-h" style="margin-bottom:14px">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div>
+              <h2 id="calCurveTitle">Actividad compradores hoy</h2>
+              <div class="sub">Índice de demanda 0–100 · hora actual indicada</div>
+            </div>
+          </div>
+          <div id="calCurveContainer" class="cal-curve-wrap"></div>
+        </div>
+
+        <!-- Week overview strip -->
+        <div class="cal-week" id="calWeek" style="margin-bottom:18px"></div>
+
+        <!-- Best slots + Season -->
         <div class="grid g-2">
           <div class="card">
             <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div><div><h2>Mejores franjas para publicar</h2></div></div>
-            <div class="slot-list" id="slotList"></div>
+            <div id="slotList"></div>
           </div>
           <div class="card">
             <div class="card-h"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9 h18 M8 2.5 v4 M16 2.5 v4"/></svg></div><div><h2>Qué vender por temporada</h2></div></div>

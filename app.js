@@ -797,37 +797,220 @@ function renderAccounts() {
 }
 
 /* ============================================================
-   CALENDAR (heatmap)
+   CALENDAR V2 — Timing Command Center
    ============================================================ */
-function heatColorFor(v) {
-  // 0..100 -> teal scale
-  const t = v / 100;
-  return `color-mix(in oklab, var(--primary) ${Math.round(8 + t * 84)}%, var(--surface-2))`;
+
+function _calCatmullPath(pts, tension) {
+  if (pts.length < 2) return "";
+  let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1[0] + (p2[0] - p0[0]) * tension;
+    const cp1y = p1[1] + (p2[1] - p0[1]) * tension;
+    const cp2x = p2[0] - (p3[0] - p1[0]) * tension;
+    const cp2y = p2[1] - (p3[1] - p1[1]) * tension;
+    d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d;
 }
+
+function renderDayCurve(data, nowIdx) {
+  const W = 740, H = 92;
+  const PL = 6, PR = 6, PT = 20, PB = 22;
+  const PW = W - PL - PR;
+  const PH = H - PT - PB;
+  const N = data.length;
+  const BOTTOM = PT + PH;
+
+  const xOf = i => PL + (i / (N - 1)) * PW;
+  const yOf = v => PT + PH - (v / 100) * PH;
+
+  const pts = data.map((v, i) => [xOf(i), yOf(v)]);
+  const linePath = _calCatmullPath(pts, 0.28);
+  const areaPath = linePath
+    + ` L ${xOf(N - 1).toFixed(1)},${BOTTOM}`
+    + ` L ${xOf(0).toFixed(1)},${BOTTOM} Z`;
+
+  // Subtle grid lines
+  const gridLines = [25, 50, 75].map(v => {
+    const y = yOf(v).toFixed(1);
+    return `<line class="cal-axis-line" x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}"/>`;
+  }).join("");
+
+  // Hour labels every 2 hours
+  const hourLabels = HEAT_HOURS.map((h, i) => {
+    if (i % 2 !== 0 && i !== N - 1) return "";
+    const x = xOf(i).toFixed(1);
+    const anchor = i === 0 ? "start" : i === N - 1 ? "end" : "middle";
+    return `<text class="cal-axis-text" x="${x}" y="${H - 4}" text-anchor="${anchor}">${String(h).padStart(2,"0")}h</text>`;
+  }).join("");
+
+  // Current time marker
+  let nowLine = "";
+  if (nowIdx >= 0 && nowIdx < N) {
+    const nx = xOf(nowIdx).toFixed(1);
+    nowLine = `<line class="cal-now-vline" x1="${nx}" y1="${PT - 7}" x2="${nx}" y2="${BOTTOM}"/>
+<text class="cal-axis-text" x="${nx}" y="${PT - 9}" text-anchor="middle" style="fill:var(--primary);font-size:8.5px;font-weight:700">AHORA</text>`;
+  }
+
+  // Peak annotation
+  const peakIdx = data.indexOf(Math.max(...data));
+  const px = xOf(peakIdx).toFixed(1);
+  const py = yOf(data[peakIdx]).toFixed(1);
+  const peakAnchor = peakIdx < 3 ? "start" : peakIdx > N - 4 ? "end" : "middle";
+
+  const svg = `<svg class="cal-curve-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="calGradFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.01"/>
+    </linearGradient>
+  </defs>
+  ${gridLines}
+  <path class="cal-area" fill="url(#calGradFill)" d="${areaPath}"/>
+  <path class="cal-line" d="${linePath}" id="calLinePath"/>
+  ${nowLine}
+  <circle class="cal-peak-dot" cx="${px}" cy="${py}" r="4.5"/>
+  <text class="cal-peak-txt" x="${px}" y="${(parseFloat(py) - 10).toFixed(1)}" text-anchor="${peakAnchor}">${String(HEAT_HOURS[peakIdx]).padStart(2,"0")}:00</text>
+  ${hourLabels}
+</svg>`;
+
+  const container = document.getElementById("calCurveContainer");
+  if (!container) return;
+  container.innerHTML = svg;
+
+  // Animate line draw
+  if (window.matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+    const pathEl = container.querySelector("#calLinePath");
+    if (pathEl) {
+      try {
+        const len = pathEl.getTotalLength();
+        pathEl.style.strokeDasharray = len;
+        pathEl.style.strokeDashoffset = len;
+        pathEl.style.transition = "stroke-dashoffset 1.6s cubic-bezier(0.22,1,0.36,1) 0.05s";
+        requestAnimationFrame(() => { pathEl.style.strokeDashoffset = "0"; });
+      } catch (_) {}
+    }
+  }
+}
+
+function renderWeekStrip(todayDay) {
+  const GROUPS = [[0,1],[2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15,16]];
+  const el = document.getElementById("calWeek");
+  if (!el) return;
+  el.innerHTML = HEAT_DAYS.map((name, d) => {
+    const row = HEAT_MATRIX[d];
+    const peakV = Math.max(...row);
+    const peakIdx = row.indexOf(peakV);
+    const peakHour = HEAT_HOURS[peakIdx];
+    const peakGroup = GROUPS.findIndex(g => g.includes(peakIdx));
+    const isToday = d === todayDay;
+    const bars = GROUPS.map((g, gi) => {
+      const avg = Math.round(g.reduce((s, i) => s + (row[i] || 0), 0) / g.length);
+      const h = Math.max(2, Math.round(avg * 0.22));
+      return `<div class="cal-day-seg${gi === peakGroup ? " hot" : ""}" style="height:${h}px"></div>`;
+    }).join("");
+    return `<div class="cal-day${isToday ? " today" : ""}">
+  <div class="cal-day-name">${isToday ? "Hoy" : name}</div>
+  <div class="cal-day-bars">${bars}</div>
+  <div class="cal-day-peakh">${String(peakHour).padStart(2,"0")}h</div>
+</div>`;
+  }).join("");
+}
+
 function renderCalendar() {
-  let html = `<div class="heat-axis"></div>`;
-  HEAT_HOURS.forEach(h => html += `<div class="heat-axis h">${String(h).padStart(2,"0")}h</div>`);
-  HEAT_DAYS.forEach((d, di) => {
-    html += `<div class="heat-axis">${d}</div>`;
-    HEAT_MATRIX[di].forEach((v, hi) => {
-      html += `<div class="heat-cell" style="background:${heatColorFor(v)}" title="${d} ${HEAT_HOURS[hi]}:00 · demanda ${v}/100"></div>`;
-    });
-  });
-  $("#heatGrid").innerHTML = html;
+  const now = new Date();
+  const dowJS = now.getDay();
+  const todayDay = dowJS === 0 ? 6 : dowJS - 1; // 0=Lun..6=Dom
+  const currentHour = now.getHours();
+  const nowIdx = currentHour - 7;
 
-  $("#slotList").innerHTML = BEST_SLOTS.map(s => `
-    <div class="slot">
-      <span class="st st-${s.tag}">${s.tag}</span>
-      <div class="meta"><b>${esc(s.d)}</b><span>${esc(s.note)}</span></div>
-      <span class="time">${esc(s.h)}</span>
-    </div>`).join("");
+  const todayRow = HEAT_MATRIX[todayDay];
+  const peakVal = Math.max(...todayRow);
+  const peakIdx = todayRow.indexOf(peakVal);
+  const peakHour = HEAT_HOURS[peakIdx];
+  const nowVal = (nowIdx >= 0 && nowIdx < 17) ? todayRow[nowIdx] : null;
+  const hoursUntilPeak = peakHour > currentHour
+    ? peakHour - currentHour
+    : (peakHour + 24 - currentHour) % 24;
 
+  // Curve title
+  const curveTitle = document.getElementById("calCurveTitle");
+  if (curveTitle) curveTitle.textContent = `Actividad compradores hoy · ${HEAT_DAYS[todayDay]}`;
+
+  // Hero: now
+  const nowScoreEl  = document.getElementById("calNowScore");
+  const nowFillEl   = document.getElementById("calNowFill");
+  const nowHourEl   = document.getElementById("calNowHour");
+  if (nowScoreEl) nowScoreEl.textContent = nowVal !== null ? `${nowVal}` : "—";
+  if (nowFillEl)  setTimeout(() => { nowFillEl.style.width = (nowVal || 0) + "%"; }, 80);
+  if (nowHourEl)  nowHourEl.textContent = nowVal !== null
+    ? `${String(currentHour).padStart(2,"0")}:00 · demanda ${nowVal}/100`
+    : currentHour < 7 ? "Antes de las 7h" : "Después de las 23h";
+
+  // Hero: peak
+  const peakTimeEl = document.getElementById("calPeakTime");
+  const peakNoteEl = document.getElementById("calPeakNote");
+  if (peakTimeEl) peakTimeEl.textContent = `${String(peakHour).padStart(2,"0")}:00`;
+  if (peakNoteEl) peakNoteEl.textContent = hoursUntilPeak === 0
+    ? "Ahora mismo"
+    : hoursUntilPeak === 1 ? "En 1 hora" : `En ${hoursUntilPeak}h`;
+
+  // Verdict
+  const vBadge = document.getElementById("calVerdictBadge");
+  const vHead  = document.getElementById("calVerdictHeadline");
+  const vSub   = document.getElementById("calVerdictSub");
+  if (vBadge && vHead && vSub) {
+    if (nowVal === null) {
+      vBadge.className = "cal-verdict-badge cv-wait"; vBadge.textContent = "Inactivo";
+      vHead.textContent = "Mercado dormido";
+      vSub.textContent  = "Compradores activos de 7h a 23h";
+    } else if (nowVal >= 70) {
+      vBadge.className = "cal-verdict-badge cv-now"; vBadge.textContent = "Publicar ahora";
+      vHead.textContent = "Estás en hora punta";
+      vSub.textContent  = "Máxima visibilidad en este momento";
+    } else if (nowVal >= 45) {
+      vBadge.className = "cal-verdict-badge cv-good"; vBadge.textContent = "Buen momento";
+      vHead.textContent = `Pico a las ${String(peakHour).padStart(2,"0")}:00`;
+      vSub.textContent  = hoursUntilPeak <= 1 ? "Pico inminente" : `En ${hoursUntilPeak}h, máxima demanda`;
+    } else {
+      vBadge.className = "cal-verdict-badge cv-soon";
+      vBadge.textContent = hoursUntilPeak <= 4 ? `En ${hoursUntilPeak}h al pico` : "Espera";
+      vHead.textContent  = "Demanda baja ahora";
+      vSub.textContent   = `Pico hoy a las ${String(peakHour).padStart(2,"0")}:00`;
+    }
+  }
+
+  // SVG curve
+  renderDayCurve(todayRow, nowIdx);
+
+  // Week strip
+  renderWeekStrip(todayDay);
+
+  // Slot list v2
+  const slotRankCls = ["r1","r2","r3","rn","rn","rn"];
+  const slotEl = document.getElementById("slotList");
+  if (slotEl) slotEl.innerHTML = BEST_SLOTS.map((s, i) =>
+    `<div class="slot-v2">
+      <div class="slot-v2-rank ${slotRankCls[i] || "rn"}">${i + 1}</div>
+      <div><div class="slot-v2-day">${esc(s.d)}</div><div class="slot-v2-note">${esc(s.note)}</div></div>
+      <div class="slot-v2-time">${esc(s.h)}</div>
+    </div>`
+  ).join("");
+
+  // Season grid
   const nowMonth = new Date().getMonth();
   const seasonIdx = Math.floor(nowMonth / 2);
-  $("#seasonGrid").innerHTML = SEASONS.map((s, i) => `
-    <div class="season ${i === seasonIdx ? "now" : ""}">
+  const seasonEl = document.getElementById("seasonGrid");
+  if (seasonEl) seasonEl.innerHTML = SEASONS.map((s, i) =>
+    `<div class="season ${i === seasonIdx ? "now" : ""}">
       ${i === seasonIdx ? '<span class="badge-now">AHORA</span>' : ""}
-      <b>${s.m}</b><p>${esc(s.t)}</p></div>`).join("");
+      <b>${s.m}</b><p>${esc(s.t)}</p>
+    </div>`
+  ).join("");
 }
 
 /* ============================================================
