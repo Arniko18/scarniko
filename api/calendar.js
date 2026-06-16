@@ -80,7 +80,7 @@ function buildLiveMatrix(items) {
     : [];
   for (const it of items) {
     const ts = itemTs(it);
-    if (!ts || ts > now + 120 || ts < now - 30 * 86400) continue;
+    if (!ts || ts > now + 86400) continue; // only reject future items (>1 day ahead)
     valid++;
     const { hour, day } = spainTime(ts);
     if (hour < HOUR_START || hour >= HOUR_START + HOURS) continue;
