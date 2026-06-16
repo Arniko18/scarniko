@@ -67,12 +67,10 @@ function decrypt(data) {
 async function readTokensFromBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "vinted-auth.json" });
-    if (!blobs.length) return null;
-    const res = await fetch(blobs[0].downloadUrl);
-    if (!res.ok) return null;
-    const raw = await res.text();
+    const { get } = await import("@vercel/blob");
+    const result = await get("vinted-auth.json", { access: "private" });
+    if (!result?.stream) return null;
+    const raw = await new Response(result.stream).text();
     return JSON.parse(decrypt(raw));
   } catch { return null; }
 }
@@ -149,12 +147,11 @@ async function resolveVintedTokens() {
 async function readHistory() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
-    const { list } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "radar-history.json" });
-    if (!blobs.length) return [];
-    const res = await fetch(blobs[0].downloadUrl);
-    if (!res.ok) return [];
-    const d = await res.json();
+    const { get } = await import("@vercel/blob");
+    const result = await get("radar-history.json", { access: "private" });
+    if (!result?.stream) return [];
+    const raw = await new Response(result.stream).text();
+    const d = JSON.parse(raw);
     return Array.isArray(d) ? d : [];
   } catch { return []; }
 }
