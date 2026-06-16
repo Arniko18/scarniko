@@ -86,13 +86,8 @@ async function writeTokensToBlob(accessToken, refreshToken) {
     expires_at:    jwtExp(accessToken),
     updated_at:    new Date().toISOString()
   }));
-  const { put, list, del } = await import("@vercel/blob");
-  // Delete any existing blob first, then put fresh — avoids allowOverwrite conflicts
-  const existing = await list({ prefix: "vinted-auth" }).catch(() => ({ blobs: [] }));
-  if (existing.blobs.length) {
-    await del(existing.blobs.map(b => b.url)).catch(() => {});
-  }
-  await put("vinted-auth.json", payload, { access: "private" });
+  const { put } = await import("@vercel/blob");
+  await put("vinted-auth.json", payload, { access: "public", addRandomSuffix: false, allowOverwrite: true });
   return true;
 }
 
@@ -168,7 +163,7 @@ async function writeHistory(snapshots) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const { put } = await import("@vercel/blob");
-    await put("radar-history.json", JSON.stringify(snapshots), { access: "private" });
+    await put("radar-history.json", JSON.stringify(snapshots), { access: "public", addRandomSuffix: false, allowOverwrite: true });
   } catch { }
 }
 
