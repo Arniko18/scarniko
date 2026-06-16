@@ -88,12 +88,15 @@ async function writeTokensToBlob(accessToken, refreshToken) {
     expires_at:    jwtExp(accessToken),
     updated_at:    new Date().toISOString()
   }));
-  const { put } = await import("@vercel/blob");
+  const { put, list, del } = await import("@vercel/blob");
+  // Delete first to avoid access-mode conflicts on overwrite
+  const { blobs } = await list({ prefix: "vinted-auth.json", token: bt });
+  if (blobs.length) await del(blobs.map(b => b.url), { token: bt });
   await put("vinted-auth.json", payload, {
+    access: "public",
     contentType: "application/octet-stream",
     addRandomSuffix: false,
     token: bt,
-    allowOverwrite: true
   });
   return true;
 }
@@ -173,6 +176,7 @@ async function writeHistory(snapshots) {
   try {
     const { put } = await import("@vercel/blob");
     await put("radar-history.json", JSON.stringify(snapshots), {
+      access: "public",
       contentType: "application/json",
       addRandomSuffix: false, token: bt, allowOverwrite: true
     });
