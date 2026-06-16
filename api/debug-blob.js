@@ -29,19 +29,40 @@ module.exports = async function handler(req, res) {
     const preview = raw ? raw.slice(0, 60) : null;
     result.steps.push({ get: "ok", statusCode: r.statusCode, raw_preview: preview, encrypted: startsWithEnc });
 
-    // Simulate readTokensFromBlob decrypt+parse
     if (raw) {
       try {
-        const { decrypt } = require("./_lib/tokens");
-        // Can't import decrypt directly, so just try JSON.parse on raw
         const parsed = JSON.parse(raw.startsWith("enc:") ? "{}" : raw);
         result.steps.push({ parse: "ok", has_access_token: !!parsed.access_token, has_refresh_token: !!parsed.refresh_token });
+
+        // Check if access_token is expired
+        const { jwtExp, isExpired, refreshVintedToken } = require("./_lib/tokens");
+        const exp = jwtExp(parsed.access_token || "");
+        const expired = isExpired(parsed.access_token || "");
+        result.steps.push({ expiry_check: { exp, expired, now: Math.floor(Date.now() / 1000) } });
+
+        if (expired && parsed.refresh_token) {
+          try {
+            const refreshed = await refreshVintedToken(parsed.refresh_token);
+            result.steps.push({ refresh_attempt: refreshed ? "ok" : "returned_null" });
+          } catch (re) {
+            result.steps.push({ refresh_attempt: "error", msg: re.message });
+          }
+        }
       } catch (pe) {
         result.steps.push({ parse: "error", msg: pe.message });
       }
     }
   } catch (e) {
     result.steps.push({ get: "error", msg: e.message, name: e.constructor?.name });
+  }
+
+  // Call the full resolveVintedTokens() to see what production actually gets
+  try {
+    const { resolveVintedTokens } = require("./_lib/tokens");
+    const resolved = await resolveVintedTokens();
+    result.steps.push({ resolveVintedTokens: resolved ? { ok: true, has_access: !!resolved.accessToken } : "null" });
+  } catch (re) {
+    result.steps.push({ resolveVintedTokens: "error", msg: re.message });
   }
 
   return res.json(result);
