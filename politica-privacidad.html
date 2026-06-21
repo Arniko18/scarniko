@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es" class="theme-dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidad · Scarniko</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+html, body { height: auto; }
+body { overflow: visible; overflow-x: clip; }
+
+.legal-nav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(18px, 5vw, 64px); height: 56px;
+  background: oklch(0.10 0.008 50 / 0.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-2);
+}
+.legal-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--f-display); font-size: 15px; font-weight: 700;
+  color: var(--text); text-decoration: none;
+}
+.legal-logo-accent { color: var(--primary); }
+.legal-back {
+  font-size: 12.5px; color: var(--faint); text-decoration: none;
+  display: flex; align-items: center; gap: 5px;
+  transition: color 0.15s;
+}
+.legal-back:hover { color: var(--dim); }
+
+.legal-wrap {
+  max-width: 720px; margin: 0 auto;
+  padding: 56px clamp(18px, 5vw, 48px) 96px;
+}
+.legal-eyebrow {
+  font-family: var(--f-mono); font-size: 10px; color: var(--primary);
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 14px;
+}
+.legal-h1 {
+  font-family: var(--f-display); font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700; letter-spacing: -0.025em; line-height: 1.1;
+  margin-bottom: 10px;
+}
+.legal-date {
+  font-family: var(--f-mono); font-size: 11px; color: var(--faint);
+  letter-spacing: 0.04em; margin-bottom: 48px;
+}
+.legal-body h2 {
+  font-family: var(--f-display); font-size: 15px; font-weight: 700;
+  color: var(--text); margin: 36px 0 10px; letter-spacing: -0.01em;
+}
+.legal-body h2:first-child { margin-top: 0; }
+.legal-body p, .legal-body li {
+  font-size: 14.5px; color: var(--dim); line-height: 1.75; margin-bottom: 10px;
+}
+.legal-body ul, .legal-body ol {
+  padding-left: 20px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;
+}
+.legal-body a { color: var(--primary); text-decoration: none; }
+.legal-body a:hover { text-decoration: underline; }
+.legal-body strong { color: var(--text); font-weight: 600; }
+.legal-body code {
+  font-family: var(--f-mono); font-size: 12px;
+  background: var(--surface-2); padding: 1px 6px; border-radius: 4px;
+}
+.legal-divider {
+  border: none; border-top: 1px solid var(--border-2); margin: 36px 0;
+}
+.legal-footer {
+  border-top: 1px solid var(--border-2);
+  padding: 24px clamp(18px, 5vw, 64px);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  background: var(--bg-2);
+}
+.legal-footer-links { display: flex; gap: 20px; list-style: none; }
+.legal-footer-links a { font-size: 12px; color: var(--faint); text-decoration: none; }
+.legal-footer-links a:hover { color: var(--dim); }
+.legal-copy { font-family: var(--f-mono); font-size: 11px; color: var(--faint); }
+</style>
+</head>
+<body>
+
+<header class="legal-nav">
+  <a href="/" class="legal-logo">
+    <svg width="18" height="18" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="9"   stroke="currentColor" stroke-width="1.5" opacity="0.22"/>
+      <circle cx="11" cy="11" r="5.5" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+      <circle cx="11" cy="11" r="1.4" fill="var(--primary)"/>
+      <line x1="11" y1="11" x2="19" y2="6.5" stroke="var(--primary)" stroke-width="1.5"/>
+    </svg>
+    Scarn<span class="legal-logo-accent">iko</span>
+  </a>
+  <a href="/" class="legal-back">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Volver
+  </a>
+</header>
+
+<main class="legal-wrap">
+  <p class="legal-eyebrow">Legal</p>
+  <h1 class="legal-h1">Política de Privacidad</h1>
+  <p class="legal-date">Última actualización: 21 de junio de 2026</p>
+
+  <div class="legal-body">
+
+    <h2>1. Responsable del tratamiento</h2>
+    <p>
+      El responsable del tratamiento de los datos personales recabados a través de Scarniko es el titular de la aplicación, contactable en <a href="mailto:arnau.sala8@gmail.com">arnau.sala8@gmail.com</a>.
+    </p>
+
+    <h2>2. Datos que tratamos</h2>
+    <p>Scarniko trata los siguientes datos personales:</p>
+    <ul>
+      <li><strong>Dirección de correo electrónico</strong> — utilizada exclusivamente para la autenticación del usuario a través de <a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a>. No se usa para comunicaciones comerciales.</li>
+      <li><strong>Tokens de acceso a Vinted</strong> — cuando el usuario los facilita voluntariamente a través del panel de configuración. Se almacenan cifrados (AES-256-GCM) en <a href="https://vercel.com/docs/storage/vercel-blob" target="_blank" rel="noopener">Vercel Blob</a> y se utilizan exclusivamente para obtener datos de demanda de marcas en la API de Vinted.</li>
+      <li><strong>Datos de inventario y cuentas</strong> — introducidos por el usuario (prendas, costes, precios, etc.). Se guardan únicamente en el almacenamiento local del navegador (<code>localStorage</code>) del propio dispositivo del usuario. No se transmiten a ningún servidor externo.</li>
+    </ul>
+
+    <h2>3. Finalidad y base jurídica</h2>
+    <ul>
+      <li><strong>Prestación del servicio</strong> — el tratamiento es necesario para la ejecución del contrato de uso de la aplicación (Art. 6.1.b RGPD).</li>
+      <li><strong>Tokens Vinted</strong> — tratados con el consentimiento expreso del usuario, quien los introduce voluntariamente (Art. 6.1.a RGPD). El usuario puede revocar este consentimiento borrando los tokens desde el panel.</li>
+    </ul>
+
+    <h2>4. Transferencias internacionales y encargados</h2>
+    <p>Scarniko utiliza los siguientes servicios de terceros que pueden implicar transferencias de datos fuera del Espacio Económico Europeo (EEE):</p>
+    <ul>
+      <li><strong>Supabase</strong> (autenticación) — instancia alojada en la región <code>eu-central-1</code> (Frankfurt, Alemania). Los datos no salen del EEE.</li>
+      <li><strong>Vercel</strong> (alojamiento y almacenamiento de tokens) — empresa con sede en EE. UU., acogida a las garantías del Marco de Privacidad UE-EE. UU. Consulta su <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">política de privacidad</a>.</li>
+      <li><strong>Google Fonts</strong> — al cargar la aplicación, el navegador realiza una petición a los servidores de Google para descargar las tipografías. Esta petición transfiere la dirección IP del usuario a Google. Consulta la <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">política de privacidad de Google</a>.</li>
+    </ul>
+
+    <h2>5. Cookies y almacenamiento local</h2>
+    <p>Scarniko <strong>no utiliza cookies propias</strong>. Los datos de inventario y configuración se almacenan en <code>localStorage</code>, que es almacenamiento local del navegador y no implica transmisión de datos a servidores.</p>
+    <p>Supabase puede establecer cookies de sesión necesarias para mantener la autenticación del usuario. Estas cookies son estrictamente necesarias para el funcionamiento del servicio y no requieren consentimiento previo conforme al art. 22.2 de la LSSI-CE.</p>
+    <p>No se utilizan cookies analíticas, publicitarias ni de seguimiento de terceros.</p>
+
+    <h2>6. Conservación de los datos</h2>
+    <ul>
+      <li><strong>Email y cuenta de autenticación</strong>: se conservan mientras el usuario disponga de una cuenta activa. Si el usuario solicita la baja, los datos se eliminan en un plazo máximo de 30 días.</li>
+      <li><strong>Tokens Vinted</strong>: se conservan hasta que el usuario los borra desde el panel o solicita la eliminación de su cuenta.</li>
+      <li><strong>Datos de inventario (localStorage)</strong>: permanecen en el dispositivo del usuario y pueden borrarse en cualquier momento desde el propio navegador.</li>
+    </ul>
+
+    <h2>7. Derechos del usuario</h2>
+    <p>De conformidad con el RGPD y la LOPDGDD, el usuario tiene derecho a:</p>
+    <ul>
+      <li><strong>Acceso</strong>: conocer qué datos personales se tratan.</li>
+      <li><strong>Rectificación</strong>: corregir datos inexactos.</li>
+      <li><strong>Supresión</strong>: solicitar la eliminación de sus datos.</li>
+      <li><strong>Portabilidad</strong>: recibir sus datos en formato estructurado.</li>
+      <li><strong>Limitación</strong>: solicitar que se restrinja el tratamiento.</li>
+      <li><strong>Oposición</strong>: oponerse al tratamiento en los casos previstos por la ley.</li>
+    </ul>
+    <p>Para ejercer estos derechos, envía un correo a <a href="mailto:arnau.sala8@gmail.com">arnau.sala8@gmail.com</a> indicando el derecho que deseas ejercer y adjuntando una copia de tu documento de identidad.</p>
+    <p>Si consideras que el tratamiento no es conforme al RGPD, puedes presentar una reclamación ante la <a href="https://www.aepd.es" target="_blank" rel="noopener">Agencia Española de Protección de Datos (AEPD)</a>.</p>
+
+    <hr class="legal-divider">
+
+    <h2>8. Cambios en esta política</h2>
+    <p>Esta política puede actualizarse para reflejar cambios en el servicio o en la normativa aplicable. La fecha de última actualización aparece al principio del documento. El uso continuado de la aplicación tras la publicación de cambios implica la aceptación de la política actualizada.</p>
+
+  </div>
+</main>
+
+<footer class="legal-footer">
+  <span class="legal-copy">© 2026 Scarniko</span>
+  <nav aria-label="Legal">
+    <ul class="legal-footer-links">
+      <li><a href="/politica-privacidad.html" aria-current="page">Política de privacidad</a></li>
+      <li><a href="/terminos.html">Términos de uso</a></li>
+    </ul>
+  </nav>
+</footer>
+
+</body>
+</html>

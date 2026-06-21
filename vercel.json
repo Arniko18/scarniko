@@ -5,6 +5,10 @@
       "schedule": "0 6 * * *"
     }
   ],
+  "rewrites": [
+    { "source": "/",    "destination": "/landing.html" },
+    { "source": "/app", "destination": "/index.html"  }
+  ],
   "headers": [
     {
       "source": "/sw.js",

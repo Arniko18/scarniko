@@ -7,12 +7,13 @@
    - Peticiones no-GET         → network-only
    ============================================================ */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `scarniko-static-${CACHE_VERSION}`;
 const FONTS_CACHE  = 'scarniko-fonts';
 
 const STATIC_ASSETS = [
   '/',
+  '/app',
   '/index.html',
   '/landing.html',
   '/styles.css',
@@ -21,6 +22,8 @@ const STATIC_ASSETS = [
   '/viz.js',
   '/favicon.svg',
   '/manifest.json',
+  '/politica-privacidad.html',
+  '/terminos.html',
 ];
 
 // Orígenes y rutas que nunca se cachean — dinámicos o con auth

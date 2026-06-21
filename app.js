@@ -36,6 +36,7 @@ const SUPA_URL = "https://fklsetwqfdmangromprj.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrbHNldHdxZmRtYW5ncm9tcHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjU1NTEsImV4cCI6MjA5NzA0MTU1MX0.RcOvY3R1SDegUJEz3eohOgVF-daDiz-OSnGPh1rCgQ4";
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 let _user = null;
+const ADMIN_EMAIL = "arnau.sala8@gmail.com";
 
 /* ---------- STATE ---------- */
 let DB = { accounts: [], house: [], activeId: "all", theme: "dark", seeded: false };
@@ -356,14 +357,19 @@ async function loadRadarData() {
     if (res.status === 401) {
       const d = await res.json().catch(() => ({}));
       if (d.error === "token_expired") {
-        document.querySelector('.token-mgmt')?.setAttribute('open', '');
-        document.getElementById('radarTokenAlert')?.removeAttribute('hidden');
-        document.getElementById('radarNavAlert')?.removeAttribute('hidden');
-        if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · renueva el token abajo';
+        if (_user?.email === ADMIN_EMAIL) {
+          document.querySelector('.token-mgmt')?.setAttribute('open', '');
+          document.getElementById('radarTokenAlert')?.removeAttribute('hidden');
+          document.getElementById('radarNavAlert')?.removeAttribute('hidden');
+          if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · renueva el token abajo';
+          toast("Token Vinted caducado — datos estáticos activos");
+        } else {
+          if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--faint)"></span>Datos de mercado · jun 2026';
+        }
       } else {
         if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Sesión caducada · recarga la página';
+        toast("Sesión caducada — recarga la página");
       }
-      toast("Token Vinted caducado — datos estáticos activos");
       return;
     }
     if (!res.ok) {
@@ -1330,6 +1336,10 @@ async function init() {
   const { data: { session } } = await supa.auth.getSession();
   if (!session) { showLogin(); return; }
   _user = session.user;
+  // Ocultar gestión de tokens Vinted a usuarios que no son el admin
+  if (_user.email !== ADMIN_EMAIL) {
+    document.querySelector('.token-mgmt')?.setAttribute('hidden', '');
+  }
   await load();
   setTheme(DB.theme || "dark");
 
