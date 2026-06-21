@@ -36,7 +36,6 @@ const SUPA_URL = "https://fklsetwqfdmangromprj.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrbHNldHdxZmRtYW5ncm9tcHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjU1NTEsImV4cCI6MjA5NzA0MTU1MX0.RcOvY3R1SDegUJEz3eohOgVF-daDiz-OSnGPh1rCgQ4";
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 let _user = null;
-const ADMIN_EMAIL = "arnau.sala8@gmail.com";
 
 /* ---------- STATE ---------- */
 let DB = { accounts: [], house: [], activeId: "all", theme: "dark", seeded: false };
@@ -113,13 +112,8 @@ function setupLoginForm() {
     submitBtn.textContent = "Cargando…";
     let result;
     if (isSignup) {
-      const ALLOWED = ["arnau.sala8@gmail.com"];
-      if (!ALLOWED.includes(emailEl.value.trim().toLowerCase())) {
-        errEl.textContent = "Registro no disponible en esta aplicación.";
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Crear cuenta";
-        return;
-      }
+      // Supabase has enable_signup=false at API level — this call will be rejected
+      // for any unauthorized email without needing a client-side allowlist
       result = await supa.auth.signUp({ email: emailEl.value.trim(), password: passEl.value });
       if (!result.error && result.data.user && !result.data.session) {
         errEl.style.color = "var(--lime)";
@@ -357,7 +351,7 @@ async function loadRadarData() {
     if (res.status === 401) {
       const d = await res.json().catch(() => ({}));
       if (d.error === "token_expired") {
-        if (_user?.email === ADMIN_EMAIL) {
+        if (_user?.app_metadata?.role === 'admin') {
           document.querySelector('.token-mgmt')?.setAttribute('open', '');
           document.getElementById('radarTokenAlert')?.removeAttribute('hidden');
           document.getElementById('radarNavAlert')?.removeAttribute('hidden');
@@ -1337,7 +1331,7 @@ async function init() {
   if (!session) { showLogin(); return; }
   _user = session.user;
   // Ocultar gestión de tokens Vinted a usuarios que no son el admin
-  if (_user.email !== ADMIN_EMAIL) {
+  if (_user.app_metadata?.role !== 'admin') {
     document.querySelector('.token-mgmt')?.setAttribute('hidden', '');
   }
   await load();
