@@ -355,7 +355,14 @@ async function loadRadarData() {
     });
     if (res.status === 401) {
       const d = await res.json().catch(() => ({}));
-      if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · actualiza VINTED_TOKEN en Vercel';
+      if (d.error === "token_expired") {
+        document.querySelector('.token-mgmt')?.setAttribute('open', '');
+        document.getElementById('radarTokenAlert')?.removeAttribute('hidden');
+        document.getElementById('radarNavAlert')?.removeAttribute('hidden');
+        if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Token Vinted caducado · renueva el token abajo';
+      } else {
+        if (statusEl) statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amber)"></span>Sesión caducada · recarga la página';
+      }
       toast("Token Vinted caducado — datos estáticos activos");
       return;
     }
@@ -379,6 +386,8 @@ async function loadRadarData() {
       }
     });
     radarLiveLoaded = true;
+    document.getElementById('radarTokenAlert')?.setAttribute('hidden', '');
+    document.getElementById('radarNavAlert')?.setAttribute('hidden', '');
     const rankEl = document.getElementById("radarRank");
     const catsEl = document.getElementById("radarCats");
     if (rankEl) rankEl.style.opacity = "0";
@@ -1292,6 +1301,7 @@ async function saveVintedTokens(accessToken, refreshToken) {
     document.getElementById("t-refresh").value = "";
     if (statusEl) statusEl.textContent = result.derived ? "Access token obtenido · actualizando..." : "Guardado · actualizando...";
     toast("Token guardado");
+    document.getElementById('radarNavAlert')?.setAttribute('hidden', '');
     await Promise.all([loadRadarData(), loadCalendarData()]);
     if (statusEl) statusEl.textContent = "Token activo · radar y calendario en tiempo real";
   } catch (e) {
